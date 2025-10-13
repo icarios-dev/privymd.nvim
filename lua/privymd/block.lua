@@ -50,7 +50,7 @@ function M.find_blocks()
 end
 
 -- 🔄 Remplace le contenu d’un bloc avec backticks corrects
-function M.set_block_content(start_line, end_line, new_content)
+function M.set_block_content(start_line, end_line, new_content, target_lines)
 	if type(new_content) ~= "table" then
 		return
 	end
@@ -60,8 +60,19 @@ function M.set_block_content(start_line, end_line, new_content)
 	vim.list_extend(block_lines, new_content)
 	table.insert(block_lines, fence_closing)
 
-	-- Insère le bloc dans le buffer
-	vim.api.nvim_buf_set_lines(0, start_line - 1, end_line, false, block_lines)
+	if target_lines then
+		-- 📄 Mode "hors buffer" : on agit sur une table Lua
+		for i = start_line, end_line do
+			target_lines[i] = nil
+		end
+		local insert_pos = start_line
+		for j, line in ipairs(block_lines) do
+			table.insert(target_lines, insert_pos + j - 1, line)
+		end
+	else
+		-- Insère le bloc dans le buffer
+		vim.api.nvim_buf_set_lines(0, start_line - 1, end_line, false, block_lines)
+	end
 end
 
 -- 🔍 Débogage

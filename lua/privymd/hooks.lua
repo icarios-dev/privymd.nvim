@@ -2,7 +2,7 @@ local Block = require("privymd.block")
 local GPG = require("privymd.gpg_async")
 local Front = require("privymd.frontmatter")
 local log = require("privymd.utils.logger")
--- log.set_log_level("trace")
+log.set_log_level("trace")
 
 local M = {}
 
@@ -18,9 +18,8 @@ local function get_passphrase()
 	return _cached_passphrase
 end
 
--- 🔓 Déchiffrement automatique à l’ouverture
-function M.decrypt_on_open()
-	log.trace("Déchiffrement automatique à l'ouverture")
+function M.decrypt_buffer()
+	log.trace("Déchiffrement du buffer")
 	local blocks = Block.find_blocks()
 
 	if #blocks == 0 then
@@ -35,6 +34,7 @@ function M.decrypt_on_open()
 	local passphrase = get_passphrase()
 
 	for _, block in ipairs(blocks) do
+		log.trace("Déhiffre le bloc " .. _ .. "…")
 		GPG.decrypt_async(block.content, passphrase, function(plaintext)
 			if plaintext then
 				Block.set_block_content(block.start, block["end"], plaintext)
@@ -43,9 +43,8 @@ function M.decrypt_on_open()
 	end
 end
 
--- 🔒 Chiffrement automatique à la sauvegarde
-function M.encrypt_on_save()
-	log.trace("Chiffrement avant sauvegarde…")
+function M.encrypt_buffer()
+	log.trace("Chiffrement du buffer…")
 	local blocks = Block.find_blocks()
 
 	if #blocks == 0 then
@@ -60,19 +59,29 @@ function M.encrypt_on_save()
 	end
 	log.debug("Recipient: " .. recipient)
 
-	for block_number, block in ipairs(blocks) do
-		log.trace("Chiffre le bloc " .. block_number .. "…")
-		log.debug(table.concat(block.content, "\n"))
-		local ciphertext = GPG.encrypt_sync(block.content, recipient)
+	-- Crée une copie du buffer pour construire le texte chiffré
+	local buf_lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 
+	for _, block in ipairs(blocks) do
+		local ciphertext = GPG.encrypt_sync(block.content, recipient)
 		if ciphertext then
-			log.debug(table.concat(ciphertext, "\n"))
-			log.trace("Remplace le texte en clair par le texte chiffré.")
-			Block.set_block_content(block.start, block["end"], ciphertext)
+			Block.set_block_content(block.start, block["end"], ciphertext, buf_lines)
 		else
 			log.error("Échec du chiffrement du bloc.")
 		end
 	end
+
+	M.save_buffer(buf_lines)
+end
+
+function M.save_buffer(buffer)
+	local filename = vim.api.nvim_buf_get_name(0)
+	local ok, err = pcall(vim.fn.writefile, buffer, filename)
+	if not ok then
+		log.error("Erreur d'écriture du fichier : " .. tostring(err))
+	end
+	-- Empêche Neovim d’écrire à nouveau (évite double-écriture)
+	vim.cmd("setlocal nomodified")
 end
 
 -- 🧹 Réinitialiser le cache de passphrase (optionnel)

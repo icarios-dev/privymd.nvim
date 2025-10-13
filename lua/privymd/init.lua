@@ -11,14 +11,14 @@ function M.setup(opts)
 	vim.api.nvim_create_autocmd({ "BufReadPost", "BufWinEnter" }, {
 		pattern = pattern,
 		callback = function()
-			Hooks.decrypt_on_open()
+			Hooks.decrypt_buffer()
 		end,
 	})
 
-	vim.api.nvim_create_autocmd("BufWritePre", {
+	vim.api.nvim_create_autocmd("BufWriteCmd", {
 		pattern = pattern,
 		callback = function()
-			Hooks.encrypt_on_save()
+			Hooks.encrypt_buffer()
 		end,
 	})
 

@@ -18,7 +18,7 @@ function M.setup(opts)
 	vim.api.nvim_create_autocmd("BufWriteCmd", {
 		pattern = pattern,
 		callback = function()
-			Hooks.encrypt_buffer()
+			Hooks.encrypt_and_save_buffer()
 		end,
 	})
 

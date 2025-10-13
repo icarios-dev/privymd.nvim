@@ -1,5 +1,5 @@
 local log = require("privymd.utils.logger")
-log.set_log_level("trace")
+log.set_log_level("debug")
 
 local M = {}
 
@@ -37,7 +37,7 @@ function M.find_blocks()
         `start_line` et `end_line` deviendraient obsolètes dès le
         deuxième bloc si on traitait le fichier du haut vers le bas.
         ]]
-				table.insert(blocks, 1, { start = start_line, ["end"] = end_line, content = content })
+				table.insert(blocks, 1, { start = start_line, end_ = end_line, content = content })
 				log.debug(string.format("Block found between : %d and %d", start_line, end_line))
 			else
 				table.insert(content, value)
@@ -52,6 +52,7 @@ end
 -- 🔄 Remplace le contenu d’un bloc avec backticks corrects
 function M.set_block_content(start_line, end_line, new_content, target_lines)
 	if type(new_content) ~= "table" then
+		log.error("Mauvais format de contenu à insérer.")
 		return
 	end
 
@@ -61,7 +62,7 @@ function M.set_block_content(start_line, end_line, new_content, target_lines)
 	table.insert(block_lines, fence_closing)
 
 	if target_lines then
-		-- 📄 Mode "hors buffer" : on agit sur une table Lua
+		-- Mode "hors buffer" : on agit sur une table Lua
 		for i = start_line, end_line do
 			target_lines[i] = nil
 		end
@@ -70,7 +71,7 @@ function M.set_block_content(start_line, end_line, new_content, target_lines)
 			table.insert(target_lines, insert_pos + j - 1, line)
 		end
 	else
-		-- Insère le bloc dans le buffer
+		-- Agit directement dans le buffer
 		vim.api.nvim_buf_set_lines(0, start_line - 1, end_line, false, block_lines)
 	end
 end
@@ -79,7 +80,7 @@ end
 function M.debug_list_blocks()
 	local blocks = M.find_blocks()
 	for index, block in ipairs(blocks) do
-		print(string.format("Bloc %d : lignes %d-%d, %d lignes", index, block.start, block["end"], #block.content))
+		print(string.format("Bloc %d : lignes %d-%d, %d lignes", index, block.start, block.end_, #block.content))
 	end
 end
 

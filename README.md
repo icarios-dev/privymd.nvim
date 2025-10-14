@@ -1,7 +1,3 @@
----
-vim: spelllang=fr
-[---](---)
-
 # privymd.nvim
 
 Plugin Neovim pour éditer des fichiers Markdown avec des blocs chiffrés GPG.
@@ -20,16 +16,35 @@ Plugin Neovim pour éditer des fichiers Markdown avec des blocs chiffrés GPG.
 - Passphrase demandée une seule fois par session
 - Aucun texte en clair jamais écrit sur disque
 
+## Dépendances
+
+- Neovim ≥ 0.10
+- gnupg
+
 ## Installation (avec Lazy.nvim)
 
 ````lua
-use {
+return {
   "icarios-dev/privymd.nvim",
+  ft = "markdown"
   config = function()
-    -- aucun setup nécessaire, autocommands déjà définies
+    require("privmd").setup({
+    })
   end
 }
 ````
+
+### Options de configuration possibles 
+
+Valeurs par défaut :
+  ````lua
+  require("privmd").setup({
+    ft_pattern = "*.md",
+    auto_decrypt = true,  -- déchiffrement automatique à l’ouverture
+    auto_encrypt = true,  -- chiffrement automatique à l’enregistrement
+    progress = true,      -- afficher spinner ou compteur de progression
+  })
+  ````
 
 ## Commandes
 

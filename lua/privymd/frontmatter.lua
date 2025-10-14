@@ -34,38 +34,12 @@ function M.get_file_recipient()
 	end
 
 	if not recipient then
-		log.warn("⚠️ No gpg-recipient found in YAML front-matter.")
+		log.warn("⚠️ No GPG recipient found in front-matter.")
 		return nil
 	end
 
 	log.trace("Recipient found: " .. recipient)
 	return recipient
-end
-
----------------------------------------------------------------------
--- 🧪 (Optionnel) récupérer toutes les métadonnées YAML
--- Utile si tu veux étendre la logique plus tard
----------------------------------------------------------------------
-function M.get_all_metadata()
-	local lines = vim.api.nvim_buf_get_lines(0, 0, 100, false)
-	local in_front_matter = false
-	local meta = {}
-
-	for _, line in ipairs(lines) do
-		if line:match("^%s*%-%-%-%s*$") then
-			in_front_matter = not in_front_matter
-			if not in_front_matter then
-				break
-			end
-		elseif in_front_matter then
-			local key, value = line:match("^%s*([%w%-%_]+):%s*(.-)%s*$")
-			if key and value then
-				meta[key] = value
-			end
-		end
-	end
-
-	return meta
 end
 
 return M

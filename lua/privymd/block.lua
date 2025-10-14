@@ -1,5 +1,5 @@
 local log = require("privymd.utils.logger")
-log.set_log_level("debug")
+-- log.set_log_level("debug")
 
 local M = {}
 

@@ -1,11 +1,7 @@
 local log = require("privymd.utils.logger")
 log.set_log_level("trace")
 
--- Évite des alertes linter
-local uv
-if vim.loop then
-	uv = vim.loop
-end
+local uv = vim.uv
 
 local M = {}
 
@@ -13,16 +9,23 @@ local M = {}
 -- 🧠 Utilitaire : exécuter gpg avec des pipes mémoire
 ---------------------------------------------------------------------
 local function run_gpg_async(gpg_args, stdin_data, passphrase, on_exit)
-	local stdin_pipe = uv.new_pipe(false)
-	local stdout_pipe = uv.new_pipe(false)
-	local stderr_pipe = uv.new_pipe(false)
-	local pass_pipe = uv.new_pipe(false)
+	local stdin_pipe = assert(uv.new_pipe(false))
+	local stdout_pipe = assert(uv.new_pipe(false))
+	local stderr_pipe = assert(uv.new_pipe(false))
+	local pass_pipe = assert(uv.new_pipe(false))
 
 	local stdout_chunks, stderr_chunks = {}, {}
 
 	local handle, spawn_err = uv.spawn("gpg", {
 		args = gpg_args,
 		stdio = { stdin_pipe, stdout_pipe, stderr_pipe, pass_pipe },
+		cwd = "",
+		env = {},
+		uid = "",
+		gid = "",
+		verbatim = false,
+		detached = false,
+		hide = true,
 	}, function(code)
 		uv.read_stop(stdout_pipe)
 		uv.read_stop(stderr_pipe)
@@ -74,7 +77,9 @@ local function run_gpg_async(gpg_args, stdin_data, passphrase, on_exit)
 	-- Écriture passphrase sur fd3
 	pass_pipe:write((passphrase or "") .. "\n")
 	pass_pipe:shutdown(function()
-		pass_pipe:close()
+		if not pass_pipe:is_closing() then
+			pass_pipe:close()
+		end
 	end)
 
 	-- Entrée (cipher/plaintext)
@@ -82,7 +87,9 @@ local function run_gpg_async(gpg_args, stdin_data, passphrase, on_exit)
 		stdin_pipe:write(stdin_data)
 	end
 	stdin_pipe:shutdown(function()
-		stdin_pipe:close()
+		if not stdin_pipe:is_closing() then
+			stdin_pipe:close()
+		end
 	end)
 end
 
@@ -132,9 +139,9 @@ function M.encrypt_sync(plaintext, recipient)
 	local stdout_chunks, stderr_chunks = {}, {}
 
 	-- création des pipes
-	local stdin_pipe = uv.new_pipe(false)
-	local stdout_pipe = uv.new_pipe(false)
-	local stderr_pipe = uv.new_pipe(false)
+	local stdin_pipe = assert(uv.new_pipe(false))
+	local stdout_pipe = assert(uv.new_pipe(false))
+	local stderr_pipe = assert(uv.new_pipe(false))
 
 	local done = false
 	local exit_code = nil
@@ -142,6 +149,13 @@ function M.encrypt_sync(plaintext, recipient)
 	local handle, spawn_err = uv.spawn("gpg", {
 		args = gpg_args,
 		stdio = { stdin_pipe, stdout_pipe, stderr_pipe },
+		cwd = "",
+		env = {},
+		uid = "",
+		gid = "",
+		verbatim = false,
+		detached = false,
+		hide = true,
 	}, function(code)
 		exit_code = code
 		done = true
@@ -173,7 +187,9 @@ function M.encrypt_sync(plaintext, recipient)
 	-- écriture stdin
 	stdin_pipe:write(input)
 	stdin_pipe:shutdown(function()
-		stdin_pipe:close()
+		if not stdin_pipe:is_closing() then
+			stdin_pipe:close()
+		end
 	end)
 
 	-- attente active jusqu'à la fin du processus
@@ -184,14 +200,10 @@ function M.encrypt_sync(plaintext, recipient)
 	-- arrêt des lectures
 	uv.read_stop(stdout_pipe)
 	uv.read_stop(stderr_pipe)
-	if stdout_pipe and not stdout_pipe:is_closing() then
-		stdout_pipe:close()
-	end
-	if stderr_pipe and not stderr_pipe:is_closing() then
-		stderr_pipe:close()
-	end
-	if handle and not handle:is_closing() then
-		handle:close()
+	for _, p in ipairs({ stdout_pipe, stderr_pipe, handle }) do
+		if p and not p:is_closing() then
+			p:close()
+		end
 	end
 
 	-- concat des résultats
@@ -203,7 +215,7 @@ function M.encrypt_sync(plaintext, recipient)
 		return nil
 	end
 
-	-- s'assurer qu'il y a une ligne vide après le header
+	-- s’assurer qu’il y a une ligne vide après le header
 	if not result:match("\n\n") then
 		result = result:gsub("(\r?\n\r?\n)", "\n\n")
 	end

@@ -19,29 +19,53 @@ local function get_passphrase()
 end
 
 function M.decrypt_buffer()
-	log.trace("Déchiffrement du buffer")
+	log.trace("Decrypting buffer...")
 	local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 	local blocks = Block.find_blocks(text)
 
 	if #blocks == 0 then
-		log.trace("Aucun bloc trouvé.")
+		log.trace("No GPG blocks found.")
 		return
 	end
 
 	vim.schedule(function()
-		log.info("Déchiffrement des blocs GPG en cours…")
+		log.info("Decrypting GPG blocks...")
 	end)
 
 	local passphrase = get_passphrase()
 
-	for _, block in ipairs(blocks) do
-		log.trace("Déhiffre le bloc " .. _ .. "…")
+	-- 🔒 Sauvegarde de l'état initial
+	local bufnr = vim.api.nvim_get_current_buf()
+	local modified_before = vim.bo.modified
+	vim.bo.modified = false
+
+	-- Exécution séquentielle pour éviter les corruptions
+	local i = 1
+	local function decrypt_next()
+		local block = blocks[i]
+		if not block then
+			-- Fin : restaurer l'état "non modifié"
+			vim.bo[bufnr].modified = modified_before
+			return
+		end
+
 		GPG.decrypt_async(block.content, passphrase, function(plaintext)
 			if plaintext then
-				Block.set_block_content(block.start, block.end_, plaintext)
+				-- ⚙️ Mise à jour synchrone du buffer
+				vim.schedule(function()
+					Block.set_block_content(block.start, block.end_, plaintext)
+					i = i + 1
+					decrypt_next()
+				end)
+			else
+				log.error("Failed to decrypt block " .. i)
+				i = i + 1
+				decrypt_next()
 			end
 		end)
 	end
+
+	decrypt_next()
 end
 
 function M.encrypt_text(text, recipient)

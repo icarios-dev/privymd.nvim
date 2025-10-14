@@ -20,7 +20,8 @@ end
 
 function M.decrypt_buffer()
 	log.trace("Déchiffrement du buffer")
-	local blocks = Block.find_blocks()
+	local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	local blocks = Block.find_blocks(text)
 
 	if #blocks == 0 then
 		log.trace("Aucun bloc trouvé.")
@@ -43,21 +44,19 @@ function M.decrypt_buffer()
 	end
 end
 
-function M.encrypt_buffer(buf_lines)
+function M.encrypt_text(text, recipient)
 	log.trace("Chiffrement du buffer…")
-	local blocks = Block.find_blocks()
+	local blocks = Block.find_blocks(text)
 
 	if #blocks == 0 then
 		log.trace("Aucun bloc GPG détecté.")
 		return
 	end
 
-	local recipient = Front.get_file_recipient()
 	if not recipient then
 		log.trace("Pas de destinataire de chiffrement défini.")
 		return
 	end
-	log.debug("Recipient: " .. recipient)
 
 	for _, block in ipairs(blocks) do
 		local ciphertext = GPG.encrypt_sync(block.content, recipient)
@@ -65,10 +64,10 @@ function M.encrypt_buffer(buf_lines)
 			log.error("Échec du chiffrement du bloc.")
 			return
 		end
-		Block.set_block_content(block.start, block.end_, ciphertext, buf_lines)
+		text = Block.set_block_content(block.start, block.end_, ciphertext, text)
 	end
 
-	return buf_lines
+	return text
 end
 
 function M.save_buffer(buf_lines)
@@ -85,18 +84,38 @@ function M.save_buffer(buf_lines)
 
 	-- Marque le buffer comme sauvegardé
 	vim.bo.modified = false
-	log.info("Fichier chiffré écrit, buffer conservé en clair.")
 end
 
 function M.encrypt_and_save_buffer()
 	-- Crée une copie du buffer pour construire le texte chiffré
 	local plaintext = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	local recipient = Front.get_file_recipient()
+	local ciphertext
 
-	-- Chiffrement
-	local ciphertext = M.encrypt_buffer(plaintext)
+	if not recipient then
+		-- ⚠️ Warning and confirmation prompt
+		local choice = vim.fn.confirm(
+			"⚠️ No GPG recipient found in the front matter.\n"
+				.. "The file will be saved unencrypted.\n\n"
+				.. "Do you want to continue?",
+			"&Yes\n&No",
+			2 -- default: No
+		)
 
-	-- Sauvegarde
-	M.save_buffer(ciphertext or plaintext)
+		if choice ~= 1 then
+			log.info("Save cancelled.")
+			return
+		end
+
+		-- Continue without encryption
+		M.save_buffer(plaintext)
+		return
+	end
+
+	-- Normal encryption
+	ciphertext = M.encrypt_text(plaintext, recipient)
+	M.save_buffer(ciphertext)
+	log.info("Fichier chiffré écrit, buffer conservé en clair.")
 end
 
 -- 🧹 Réinitialiser le cache de passphrase (optionnel)

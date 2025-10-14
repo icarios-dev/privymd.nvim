@@ -6,16 +6,15 @@ local M = {}
 local fence_opening = "````gpg"
 local fence_closing = "````"
 
--- 🔍 Trouve tous les blocs ````gpg```` du buffer
-function M.find_blocks()
+-- 🔍 Trouve tous les blocs ````gpg```` d'un texte donné
+function M.find_blocks(text)
 	log.trace("Looking for blocks…")
-	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 	local blocks = {}
 
 	local in_block = false
 	local start_line, end_line, content
 
-	for line_number, value in ipairs(lines) do
+	for line_number, value in ipairs(text) do
 		if value:match("^" .. fence_opening .. "$") and not in_block then
 			in_block = true
 			start_line = line_number
@@ -49,11 +48,11 @@ function M.find_blocks()
 	return blocks
 end
 
--- 🔄 Remplace le contenu d’un bloc avec backticks corrects
-function M.set_block_content(start_line, end_line, new_content, target_lines)
+-- Remplace le contenu d’un bloc : plain <=> cipher
+function M.set_block_content(start_line, end_line, new_content, lines)
 	if type(new_content) ~= "table" then
 		log.error("Mauvais format de contenu à insérer.")
-		return
+		return lines
 	end
 
 	-- construit le bloc
@@ -61,24 +60,26 @@ function M.set_block_content(start_line, end_line, new_content, target_lines)
 	vim.list_extend(block_lines, new_content)
 	table.insert(block_lines, fence_closing)
 
-	if target_lines then
-		-- Mode "hors buffer" : on agit sur une table Lua
-		for i = start_line, end_line do
-			target_lines[i] = nil
-		end
-		local insert_pos = start_line
-		for j, line in ipairs(block_lines) do
-			table.insert(target_lines, insert_pos + j - 1, line)
-		end
-	else
-		-- Agit directement dans le buffer
+	-- Agit directement dans le buffer
+	if not lines then
 		vim.api.nvim_buf_set_lines(0, start_line - 1, end_line, false, block_lines)
+		return
 	end
+
+	-- Mode "hors buffer" : on agit sur une table Lua
+	local new_lines = {}
+
+	vim.list_extend(new_lines, vim.list_slice(lines, 1, start_line - 1))
+	vim.list_extend(new_lines, block_lines)
+	vim.list_extend(new_lines, vim.list_slice(lines, end_line + 1, #lines))
+
+	return new_lines
 end
 
 -- 🔍 Débogage
 function M.debug_list_blocks()
-	local blocks = M.find_blocks()
+	local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	local blocks = M.find_blocks(text)
 	for index, block in ipairs(blocks) do
 		print(string.format("Bloc %d : lignes %d-%d, %d lignes", index, block.start, block.end_, #block.content))
 	end
@@ -91,24 +92,6 @@ function M.is_encrypted(block)
 	end
 	local first_line = block.content[1]
 	return first_line:match("BEGIN%sPGP%sMESSAGE") ~= nil
-end
-
----------------------------------------------------------------------
--- 📤 Extrait le contenu d’un bloc (sans les fences)
----------------------------------------------------------------------
-function M.get_content(start_line, end_line)
-	-- start_line et end_line sont 1-based (comme renvoyés par find_all)
-	-- On retire la ligne d’ouverture et de fermeture ```
-	local lines = vim.api.nvim_buf_get_lines(0, start_line, end_line, false)
-	if #lines <= 2 then
-		return {}
-	end
-	-- retirer première et dernière ligne
-	local content = {}
-	for i = 2, #lines - 1 do
-		table.insert(content, lines[i])
-	end
-	return content
 end
 
 return M

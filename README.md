@@ -1,61 +1,143 @@
 # privymd.nvim
 
-Plugin Neovim pour éditer des fichiers Markdown avec des blocs chiffrés GPG.
+Neovim plugin to edit Markdown files containing encrypted GPG blocks.
 
-## Fonctionnalités
+## Features
 
-- Déchiffrement automatique à l'ouverture (`decrypt_async`)
-- Chiffrement automatique à la sauvegarde (`encrypt_sync`)
-- Bloc Markdown spécial : ````gpg````
-- Définition du destinataire GPG dans le front-matter YAML :
-  ```yaml
-  ---
-  gpg-recipient: identifiant-de-clé-GPG
-  ---
-  ```
-- Passphrase demandée une seule fois par session
-- Aucun texte en clair jamais écrit sur disque
+* 🔓 Automatic decryption on file open (`decrypt_async`)
+* 🔒 Automatic encryption on save (`encrypt_sync`)
+* 🧩 Special Markdown code fences: `gpg`
+* 📄 Define the GPG recipient in the YAML front‑matter:
 
-## Dépendances
-
-- Neovim ≥ 0.10
-- gnupg
-
-## Installation (avec Lazy.nvim)
-
-````lua
-return {
-  "icarios-dev/privymd.nvim",
-  ft = "markdown"
-  config = function()
-    require("privmd").setup({
-    })
-  end
-}
+````yaml
+---
+gpg-recipient: your-gpg-key-id
+---
 ````
 
-### Options de configuration possibles 
+* 🔐 Passphrase requested only once per session
+* 💾 No plaintext ever written to disk
 
-Valeurs par défaut :
-  ````lua
-  require("privmd").setup({
-    ft_pattern = "*.md",
-    auto_decrypt = true,  -- déchiffrement automatique à l’ouverture
-    auto_encrypt = true,  -- chiffrement automatique à l’enregistrement
-    progress = true,      -- afficher spinner ou compteur de progression
-  })
-  ````
+## Dependencies
 
-## Commandes
+* Neovim ≥ 0.10
+* `gnupg` (`gpg` must be available in your `$PATH`)
 
-- ```:PrivyMDShowBlocks``` → affiche tous les blocs GPG détectés
-- ```:PrivyMDClearPass``` → oublie la passphrase de la session
+## Installation (example with Lazy.nvim)
 
-## ✅ Points forts de cette structure
+```lua
+return {
+  "icarios-dev/privymd.nvim",
+  ft = "markdown",
+  config = function()
+    require("privymd").setup({
+      -- optional configuration here
+    })
+  end,
+}
+```
 
-1. Tout est **en mémoire** → pas de fichiers temporaires en clair.
-2. Flux transparent → l’utilisateur édite normalement, les blocs sont
-   déchiffrés automatiquement.
-3. Sauvegarde sécurisée → tous les blocs sont chiffrés avant écriture.
-4. Plugin autonome → autocommands, commandes utilisateur, aucun setup
-   obligatoire.
+## Configuration options
+
+Default values:
+
+```lua
+require("privymd").setup({
+  ft_pattern = "*.md",
+  auto_decrypt = true,  -- automatically decrypt on open
+  auto_encrypt = true,  -- automatically encrypt on save
+  progress = true,      -- show a progress indicator
+})
+```
+
+## Available commands
+
+| Command              | Description                                           |
+| -------------------- | ----------------------------------------------------- |
+| `:PrivyMDShowBlocks` | List all detected GPG blocks                          |
+| `:PrivyMDClearPass`  | Forget cached passphrase                              |
+| `:PrivyDecrypt`      | Force decryption of current buffer                    |
+| `:PrivyEncrypt`      | Force encryption and save immediately                 |
+| `:PrivyToggle`       | Toggle plaintext/encrypted in memory (without saving) |
+
+---
+
+## ✅ Highlights
+
+1. **Everything stays in memory** → no temporary plaintext files.
+2. **Transparent workflow** → edit Markdown normally.
+3. **Secure save** → all GPG blocks are re‑encrypted before writing.
+4. **Autonomous plugin** → no manual setup beyond installation.
+
+---
+
+## ⚙️ Usage
+
+Each Markdown file must define a GPG key identifier (`gpg-recipient`) in its *YAML front‑matter*.
+Text regions that should be encrypted must be wrapped inside fenced code blocks using the `gpg` language:
+
+``````markdown
+
+Clear text
+
+````gpg
+Secret content...
+
+````
+
+Clear text
+
+``````
+
+* On open, blocks are automatically decrypted; on save, they are encrypted again.
+* On failure, clear error messages will indicate the cause (`ENOENT`, invalid passphrase, etc.).
+
+---
+
+## 🧭 Compatibility
+
+Tested only on **Linux (Arch)**.
+Other Unix‑like systems may work but are not officially supported.
+
+Windows is **not supported**.
+
+---
+
+## 🧪 Code quality & conventions
+
+The project follows a strict philosophy: **no unnecessary warnings** and **no hidden logic**.
+
+### Linting
+
+* Lua code is analyzed using **LuaLS**.
+* The repository must stay **diagnostic‑free** (`0 warnings`).
+* Any exceptions must be explicitly justified, for example:
+
+```lua
+---@diagnostic disable-next-line: missing-fields
+handle, spawn_err = uv.spawn("gpg", {
+  args = args,
+  stdio = stdio,
+  env = {},
+  verbatim = false,
+  detached = false,
+  hide = true,
+})
+```
+
+* Never disable diagnostics globally for a whole file.
+
+### Style
+
+* Indentation: 2 spaces, no tabs.
+* Explicit local variables (`local handle; handle, spawn_err = ...`).
+* No implicit global variables.
+* Consistent naming (`snake_case`).
+* Structured logging levels: `trace`, `debug`, `info`, `warn`, `error`.
+* Every exception or edge case must include a clear comment.
+
+---
+
+## 📜 License
+
+MIT — © 2025 [icarios-dev](https://github.com/icarios-dev)

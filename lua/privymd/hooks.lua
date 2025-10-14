@@ -1,9 +1,9 @@
 local Block = require("privymd.block")
 local GPG = require("privymd.gpg_async")
 local Front = require("privymd.frontmatter")
-local Progress = require("privymd.progress")
+local Progress = require("privymd.utils.progress")
 local log = require("privymd.utils.logger")
-log.set_log_level("debug")
+-- log.set_log_level("debug")
 
 local M = {}
 

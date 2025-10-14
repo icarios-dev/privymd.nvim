@@ -2,23 +2,24 @@ local log = require("privymd.utils.logger")
 log.set_log_level("trace")
 
 local uv = vim.uv
-
 local M = {}
 
 ---------------------------------------------------------------------
--- 🧠 Utilitaire : exécuter gpg avec des pipes mémoire
+-- 🧠 Exécuter gpg de façon asynchrone avec pipes mémoire
 ---------------------------------------------------------------------
 local function run_gpg_async(gpg_args, stdin_data, passphrase, on_exit)
-	local stdin_pipe = assert(uv.new_pipe(false))
-	local stdout_pipe = assert(uv.new_pipe(false))
-	local stderr_pipe = assert(uv.new_pipe(false))
-	local pass_pipe = assert(uv.new_pipe(false))
+	local pipes = {
+		stdin = assert(uv.new_pipe(false)),
+		stdout = assert(uv.new_pipe(false)),
+		stderr = assert(uv.new_pipe(false)),
+		pass = assert(uv.new_pipe(false)),
+	}
 
 	local stdout_chunks, stderr_chunks = {}, {}
 
 	local handle, spawn_err = uv.spawn("gpg", {
 		args = gpg_args,
-		stdio = { stdin_pipe, stdout_pipe, stderr_pipe, pass_pipe },
+		stdio = { pipes.stdin, pipes.stdout, pipes.stderr, pipes.pass },
 		cwd = "",
 		env = {},
 		uid = "",
@@ -27,10 +28,7 @@ local function run_gpg_async(gpg_args, stdin_data, passphrase, on_exit)
 		detached = false,
 		hide = true,
 	}, function(code)
-		uv.read_stop(stdout_pipe)
-		uv.read_stop(stderr_pipe)
-
-		for _, p in ipairs({ stdin_pipe, stdout_pipe, stderr_pipe, pass_pipe }) do
+		for _, p in pairs(pipes) do
 			if p and not p:is_closing() then
 				p:close()
 			end
@@ -58,15 +56,16 @@ local function run_gpg_async(gpg_args, stdin_data, passphrase, on_exit)
 		return
 	end
 
-	-- Lecture stdout/stderr
-	uv.read_start(stdout_pipe, function(err, data)
+	-- stdout/stderr
+	uv.read_start(pipes.stdout, function(err, data)
 		if err then
 			table.insert(stderr_chunks, "stdout err: " .. err)
 		elseif data then
 			table.insert(stdout_chunks, data)
 		end
 	end)
-	uv.read_start(stderr_pipe, function(err, data)
+
+	uv.read_start(pipes.stderr, function(err, data)
 		if err then
 			table.insert(stderr_chunks, "stderr err: " .. err)
 		elseif data then
@@ -74,27 +73,27 @@ local function run_gpg_async(gpg_args, stdin_data, passphrase, on_exit)
 		end
 	end)
 
-	-- Écriture passphrase sur fd3
-	pass_pipe:write((passphrase or "") .. "\n")
-	pass_pipe:shutdown(function()
-		if not pass_pipe:is_closing() then
-			pass_pipe:close()
+	-- passphrase sur fd3
+	pipes.pass:write((passphrase or "") .. "\n")
+	pipes.pass:shutdown(function()
+		if not pipes.pass:is_closing() then
+			pipes.pass:close()
 		end
 	end)
 
-	-- Entrée (cipher/plaintext)
+	-- entrée principale
 	if stdin_data and #stdin_data > 0 then
-		stdin_pipe:write(stdin_data)
+		pipes.stdin:write(stdin_data)
 	end
-	stdin_pipe:shutdown(function()
-		if not stdin_pipe:is_closing() then
-			stdin_pipe:close()
+	pipes.stdin:shutdown(function()
+		if not pipes.stdin:is_closing() then
+			pipes.stdin:close()
 		end
 	end)
 end
 
 ---------------------------------------------------------------------
--- 🔓 Déchiffrement asynchrone (fluide à l’ouverture)
+-- 🔓 Déchiffrement asynchrone (à l’ouverture)
 ---------------------------------------------------------------------
 function M.decrypt_async(ciphertext, passphrase, callback)
 	if not ciphertext or #ciphertext == 0 then
@@ -102,7 +101,6 @@ function M.decrypt_async(ciphertext, passphrase, callback)
 		return
 	end
 
-	local input = table.concat(ciphertext, "\n")
 	local gpg_args = {
 		"--batch",
 		"--yes",
@@ -114,11 +112,11 @@ function M.decrypt_async(ciphertext, passphrase, callback)
 		"--decrypt",
 	}
 
-	run_gpg_async(gpg_args, input, passphrase, callback)
+	run_gpg_async(gpg_args, table.concat(ciphertext, "\n"), passphrase, callback)
 end
 
 ---------------------------------------------------------------------
--- 🔒 Chiffrement synchrone (pour BufWritePre)
+-- 🔒 Chiffrement synchrone (à la sauvegarde)
 ---------------------------------------------------------------------
 function M.encrypt_sync(plaintext, recipient)
 	log.trace("Chiffrement d'un bloc…")
@@ -126,7 +124,6 @@ function M.encrypt_sync(plaintext, recipient)
 		return nil
 	end
 
-	local input = table.concat(plaintext, "\n")
 	local gpg_args = {
 		"--batch",
 		"--yes",
@@ -136,19 +133,18 @@ function M.encrypt_sync(plaintext, recipient)
 		recipient,
 	}
 
+	local pipes = {
+		stdin = assert(uv.new_pipe(false)),
+		stdout = assert(uv.new_pipe(false)),
+		stderr = assert(uv.new_pipe(false)),
+	}
+
 	local stdout_chunks, stderr_chunks = {}, {}
-
-	-- création des pipes
-	local stdin_pipe = assert(uv.new_pipe(false))
-	local stdout_pipe = assert(uv.new_pipe(false))
-	local stderr_pipe = assert(uv.new_pipe(false))
-
-	local done = false
-	local exit_code = nil
+	local done, exit_code = false, nil
 
 	local handle, spawn_err = uv.spawn("gpg", {
 		args = gpg_args,
-		stdio = { stdin_pipe, stdout_pipe, stderr_pipe },
+		stdio = { pipes.stdin, pipes.stdout, pipes.stderr },
 		cwd = "",
 		env = {},
 		uid = "",
@@ -157,8 +153,7 @@ function M.encrypt_sync(plaintext, recipient)
 		detached = false,
 		hide = true,
 	}, function(code)
-		exit_code = code
-		done = true
+		exit_code, done = code, true
 	end)
 
 	if not handle then
@@ -166,8 +161,7 @@ function M.encrypt_sync(plaintext, recipient)
 		return nil
 	end
 
-	-- lecture stdout
-	uv.read_start(stdout_pipe, function(err, data)
+	uv.read_start(pipes.stdout, function(err, data)
 		if err then
 			table.insert(stderr_chunks, "stdout err: " .. err)
 		elseif data then
@@ -175,8 +169,7 @@ function M.encrypt_sync(plaintext, recipient)
 		end
 	end)
 
-	-- lecture stderr
-	uv.read_start(stderr_pipe, function(err, data)
+	uv.read_start(pipes.stderr, function(err, data)
 		if err then
 			table.insert(stderr_chunks, "stderr err: " .. err)
 		elseif data then
@@ -184,46 +177,40 @@ function M.encrypt_sync(plaintext, recipient)
 		end
 	end)
 
-	-- écriture stdin
-	stdin_pipe:write(input)
-	stdin_pipe:shutdown(function()
-		if not stdin_pipe:is_closing() then
-			stdin_pipe:close()
+	pipes.stdin:write(table.concat(plaintext, "\n"))
+	pipes.stdin:shutdown(function()
+		if not pipes.stdin:is_closing() then
+			pipes.stdin:close()
 		end
 	end)
 
-	-- attente active jusqu'à la fin du processus
 	while not done do
 		uv.run("once")
 	end
 
-	-- arrêt des lectures
-	uv.read_stop(stdout_pipe)
-	uv.read_stop(stderr_pipe)
-	for _, p in ipairs({ stdout_pipe, stderr_pipe, handle }) do
-		if p and not p:is_closing() then
+	for _, p in pairs(pipes) do
+		uv.read_stop(p)
+		if not p:is_closing() then
 			p:close()
 		end
 	end
+	if handle and not handle:is_closing() then
+		handle:close()
+	end
 
-	-- concat des résultats
 	local result = table.concat(stdout_chunks)
 	local stderr_str = table.concat(stderr_chunks)
-
 	if exit_code ~= 0 or result == "" then
 		log.error("Échec chiffrement : " .. stderr_str)
 		return nil
 	end
 
-	-- s’assurer qu’il y a une ligne vide après le header
 	if not result:match("\n\n") then
 		result = result:gsub("(\r?\n\r?\n)", "\n\n")
 	end
 
-	local ciphertext = vim.split(result, "\n", { trimempty = true })
-
 	log.trace("Renvoi du bloc chiffré.")
-	return ciphertext
+	return vim.split(result, "\n", { trimempty = true })
 end
 
 return M

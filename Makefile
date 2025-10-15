@@ -13,7 +13,7 @@ MINIMAL_INIT = $(TEST_DIR)/minimal_init.lua
 all: help
 
 .PHONY: lint
-lint: luacheck
+lint: selene
 
 .PHONY: luacheck
 luacheck:

@@ -35,7 +35,7 @@ function M.setup(opts)
 		vim.api.nvim_create_autocmd("BufWriteCmd", {
 			pattern = pattern,
 			callback = function()
-				Hooks.encrypt_and_save_buffer(M.config)
+				Hooks.encrypt_and_save_buffer()
 			end,
 		})
 	end
@@ -49,7 +49,7 @@ function M.setup(opts)
 
 	-- Force manual encryption and save
 	vim.api.nvim_create_user_command("PrivyEncrypt", function()
-		Hooks.encrypt_and_save_buffer(M.config)
+		Hooks.encrypt_and_save_buffer()
 	end, {})
 
 	-- Toggle decrypt/encrypt in memory (without saving)

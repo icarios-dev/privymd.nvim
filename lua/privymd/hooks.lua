@@ -1,7 +1,6 @@
 local Block = require("privymd.block")
-local GPG = require("privymd.gpg_async")
+local Gpg = require("privymd.gpg")
 local Front = require("privymd.frontmatter")
-local Progress = require("privymd.utils.progress")
 local log = require("privymd.utils.logger")
 -- log.set_log_level("debug")
 
@@ -19,8 +18,63 @@ local function get_passphrase()
 	return _cached_passphrase
 end
 
-function M.decrypt_buffer(config)
+---------------------------------------------------------------------
+-- 🔓 Decrypt a single block
+---------------------------------------------------------------------
+local function decrypt_block(block, passphrase, on_done)
+	if not block or not Block.is_encrypted(block) then
+		if on_done then
+			on_done()
+		end
+		return
+	end
+
+	Gpg.decrypt_async(block.content, passphrase, function(plaintext)
+		vim.schedule(function()
+			if not plaintext then
+				log.error("Failed to decrypt block.")
+				if on_done then
+					on_done()
+				end
+				return
+			end
+
+			Block.set_block_content(block.start, block.end_, plaintext)
+			if on_done then
+				on_done()
+			end
+		end)
+	end)
+end
+
+---------------------------------------------------------------------
+-- 🔒 Encrypt a single block
+---------------------------------------------------------------------
+local function encrypt_block(block, recipient, text)
+	if not block or Block.is_encrypted(block) then
+		return
+	end
+
+	local ciphertext = Gpg.encrypt_sync(block.content, recipient)
+	if not ciphertext then
+		log.error("Encryption failed for current block.")
+		return
+	end
+
+	return Block.set_block_content(block.start, block.end_, ciphertext, text)
+end
+
+---------------------------------------------------------------------
+-- End Helpers
+---------------------------------------------------------------------
+
+function M.decrypt_buffer()
+	if not Gpg.is_gpg_available() then
+		log.warn("GPG non disponible — déchiffrement annulé.")
+		return
+	end
 	log.trace("Decrypting buffer...")
+	local bufnr = vim.api.nvim_get_current_buf()
 	local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 	local blocks = Block.find_blocks(text)
 
@@ -29,56 +83,34 @@ function M.decrypt_buffer(config)
 		return
 	end
 
-	vim.schedule(function()
-		log.info("Decrypting GPG blocks...")
-	end)
-
 	local passphrase = get_passphrase()
-	if config and config.progress then
-		Progress.start(#blocks, "Decrypting GPG blocks…")
-	end
-
-	-- 🔒 Sauvegarde de l'état initial
-	local bufnr = vim.api.nvim_get_current_buf()
 	local modified_before = vim.bo.modified
-	vim.bo.modified = false
+	vim.bo[bufnr].modified = false
 
-	-- Exécution séquentielle pour éviter les corruptions
 	local i = 1
+
 	local function decrypt_next()
 		local block = blocks[i]
 		if not block then
-			if config and config.progress then
-				Progress.stop("Decryption complete ✔")
-			end
-			-- Restaure l'état "non modifié"
 			vim.bo[bufnr].modified = modified_before
+			log.info("All blocks decrypted")
 			return
 		end
 
-		GPG.decrypt_async(block.content, passphrase, function(plaintext)
-			if plaintext then
-				-- ⚙️ Mise à jour synchrone du buffer
-				vim.schedule(function()
-					Block.set_block_content(block.start, block.end_, plaintext)
-					if config and config.progress then
-						Progress.update(i)
-					end
-					i = i + 1
-					decrypt_next()
-				end)
-			else
-				log.error("Failed to decrypt block " .. i)
-				i = i + 1
-				decrypt_next()
-			end
+		decrypt_block(block, passphrase, function()
+			i = i + 1
+			decrypt_next()
 		end)
 	end
 
 	decrypt_next()
 end
 
-function M.encrypt_text(text, recipient, config)
+function M.encrypt_text(text, recipient)
+	if not Gpg.is_gpg_available() then
+		log.warn("GPG non disponible — chiffrement annulé.")
+		return
+	end
 	log.trace("Chiffrement du buffer…")
 	local blocks = Block.find_blocks(text)
 
@@ -92,30 +124,20 @@ function M.encrypt_text(text, recipient, config)
 		return
 	end
 
-	if config and config.progress then
-		Progress.start(#blocks, "Encrypting GPG blocks…")
+	for _, block in ipairs(blocks) do
+		local new_text = encrypt_block(block, recipient, text)
+		if not new_text then
+			log.error(("Skipping block %d: encryption failed."):format(block.start))
+		end
+		text = new_text
 	end
 
-	for index, block in ipairs(blocks) do
-		local ciphertext = GPG.encrypt_sync(block.content, recipient)
-		if not ciphertext then
-			log.error("Échec du chiffrement du bloc.")
-			return
-		end
-		if config and config.progress then
-			Progress.update(index)
-		end
-		text = Block.set_block_content(block.start, block.end_, ciphertext, text)
-	end
-
-	if config and config.progress then
-		Progress.stop("Encryption complete ✔")
-	end
+	log.info("Encryption complete ✔")
 	return text
 end
 
 function M.save_buffer(buf_lines)
-	if not buf_lines or #buf_lines == 0 then
+	if type(buf_lines) ~= "table" or #buf_lines == 0 then
 		log.error("Aucune donnée à écrire (buffer vide ou invalide).")
 		return
 	end
@@ -126,11 +148,12 @@ function M.save_buffer(buf_lines)
 		return
 	end
 
+	log.info("Fichier chiffré écrit, buffer conservé en clair.")
 	-- Marque le buffer comme sauvegardé
 	vim.bo.modified = false
 end
 
-function M.encrypt_and_save_buffer(config)
+function M.encrypt_and_save_buffer()
 	-- Crée une copie du buffer pour construire le texte chiffré
 	local plaintext = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 	local recipient = Front.get_file_recipient()
@@ -140,7 +163,7 @@ function M.encrypt_and_save_buffer(config)
 	if #blocks == 0 then
 		M.save_buffer(plaintext)
 		return
-	elseif #blocks ~= 0 and not recipient then
+	elseif #blocks > 0 and not recipient then
 		-- ⚠️ Warning and confirmation prompt
 		local choice = vim.fn.confirm(
 			"⚠️ No GPG recipient found in the front matter.\n"
@@ -161,15 +184,57 @@ function M.encrypt_and_save_buffer(config)
 	end
 
 	-- Normal encryption
-	ciphertext = M.encrypt_text(plaintext, recipient, config)
+	ciphertext = M.encrypt_text(plaintext, recipient)
 	M.save_buffer(ciphertext)
-	log.info("Fichier chiffré écrit, buffer conservé en clair.")
 end
 
 -- 🧹 Réinitialiser le cache de passphrase (optionnel)
 function M.clear_passphrase()
 	_cached_passphrase = nil
 	log.info("Passphrase oubliée de la session.")
+end
+
+---------------------------------------------------------------------
+-- 🔁 Toggle encryption/decryption for the block under cursor
+---------------------------------------------------------------------
+function M.toggle_encryption()
+	local bufnr = vim.api.nvim_get_current_buf()
+	local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
+	local text = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+	local blocks = Block.find_blocks(text)
+	if #blocks == 0 then
+		log.info("No GPG blocks found.")
+		return
+	end
+
+	-- find the block under cursor
+	local target
+	for _, block in ipairs(blocks) do
+		if cursor_line >= block.start and cursor_line <= block.end_ then
+			target = block
+			break
+		end
+	end
+	if not target then
+		log.warn("Cursor not inside a GPG block.")
+		return
+	end
+
+	local modified_before = vim.bo[bufnr].modified
+	vim.bo[bufnr].modified = false
+
+	if Block.is_encrypted(target) then
+		local passphrase = get_passphrase()
+		decrypt_block(target, passphrase)
+	else
+		local recipient = Front.get_file_recipient()
+		if not recipient then
+			return
+		end
+		encrypt_block(target, recipient)
+	end
+
+	vim.bo[bufnr].modified = modified_before
 end
 
 return M

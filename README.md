@@ -46,7 +46,6 @@ require("privymd").setup({
   ft_pattern = "*.md",
   auto_decrypt = true,  -- automatically decrypt on open
   auto_encrypt = true,  -- automatically encrypt on save
-  progress = true,      -- show a progress indicator
 })
 ```
 

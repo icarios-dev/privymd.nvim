@@ -1,0 +1,18 @@
+# Indentation and layout
+indent_type = "Spaces"
+indent_width = 2
+column_width = 100
+
+# Quotes and strings
+quote_style = "AutoPreferSingle"
+call_parentheses = "Always"
+
+# Tables and trailing commas
+collapse_simple_statement = "Never"
+
+# Line endings
+line_endings = "Unix"
+
+# Sort order for requires (optional)
+[sort_requires]
+enabled = true

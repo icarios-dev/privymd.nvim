@@ -58,32 +58,44 @@ function M.find_blocks(text)
   return blocks
 end
 
+local function build_gpg_block(content)
+  local gpg_block = { fence_opening }
+  vim.list_extend(gpg_block, content)
+  table.insert(gpg_block, fence_closing)
+
+  return gpg_block
+end
+
 -- Remplace le contenu d’un bloc : plain <=> cipher
-function M.set_block_content(start_line, end_line, new_content, lines)
-  if type(new_content) ~= 'table' then
-    log.error('Mauvais format de contenu à insérer.')
+function M.set_block_content(lines, block)
+  if type(lines) ~= 'table' then
+    return lines
+  end
+  if type(block) ~= 'table' or type(block.content) ~= 'table' then
+    log.error("Invalid block format: expected table with field 'content'.")
     return lines
   end
 
-  -- construit le bloc
-  local block_lines = { fence_opening }
-  vim.list_extend(block_lines, new_content)
-  table.insert(block_lines, fence_closing)
+  local block_lines = build_gpg_block(block.content)
 
-  -- Agit directement dans le buffer
-  if not lines then
-    vim.api.nvim_buf_set_lines(0, start_line - 1, end_line, false, block_lines)
+  local new_lines = {}
+  vim.list_extend(new_lines, vim.list_slice(lines, 1, block.start - 1))
+  vim.list_extend(new_lines, block_lines)
+  vim.list_extend(new_lines, vim.list_slice(lines, block.end_ + 1, #lines))
+
+  return new_lines
+end
+
+-- explicit side-effect: modifies the active buffer
+function M.set_block_in_buffer(block)
+  if type(block) ~= 'table' or type(block.content) ~= 'table' then
+    log.error("Invalid block format: expected table with field 'content'.")
     return
   end
 
-  -- Mode "hors buffer" : on agit sur une table Lua
-  local new_lines = {}
+  local block_lines = build_gpg_block(block.content)
 
-  vim.list_extend(new_lines, vim.list_slice(lines, 1, start_line - 1))
-  vim.list_extend(new_lines, block_lines)
-  vim.list_extend(new_lines, vim.list_slice(lines, end_line + 1, #lines))
-
-  return new_lines
+  vim.api.nvim_buf_set_lines(0, block.start - 1, block.end_, false, block_lines)
 end
 
 -- 🔍 Débogage

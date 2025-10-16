@@ -82,52 +82,57 @@ describe('privymd.block', function()
   end)
 
   -- set_block_content()
-  describe('set_block_content()', function()
-    describe('in table mode', function()
-      it('replaces the content of a block within a list of lines', function()
-        local original_lines = {
-          'intro',
-          '````gpg',
-          'old line',
-          '````',
-          'outro',
-        }
-        local new_lines =
-          assert(Block.set_block_content(2, 4, { 'new', 'content' }, original_lines))
-        assert.is_true(vim.tbl_contains(new_lines, 'new'))
-        assert.is_true(vim.tbl_contains(new_lines, 'content'))
-        assert.are.equal('````gpg', new_lines[2])
-        assert.are.equal('````', new_lines[5])
+  describe('set block', function()
+    local original, new_block, destination
+
+    before_each(function()
+      original = {
+        'start',
+        '````gpg',
+        'original content',
+        '````',
+        'end',
+      }
+      new_block = { start = 2, end_ = 4, content = { 'new', 'content' } }
+      destination = {
+        'start',
+        '````gpg',
+        'new',
+        'content',
+        '````',
+        'end',
+      }
+    end)
+
+    -- section set_block_content()
+    describe('set_block_content()', function()
+      it('returns a new table where the given block is replaced', function()
+        local updated = Block.set_block_content(original, new_block)
+
+        assert.are.same(destination, updated)
       end)
 
-      it('returns the same lines when new_content is invalid', function()
-        local original_lines = { 'a', '````gpg', 'b', '````', 'c' }
-        local result = Block.set_block_content(2, 4, 'not a table', original_lines)
-        assert.are.same(original_lines, result)
+      it('returns the same table when new_content is invalid', function()
+        original = { 'a', '````gpg', 'b', '````', 'c' }
+        local invalid_block = { start = 2, end_ = 4, content = 'bad_content' }
+        local result = Block.set_block_content(original, invalid_block)
+
+        assert.are.same(original, result)
       end)
     end)
 
-    describe(' in buffer mode', function()
-      it('updates block content directly in the active buffer', function()
+    -- section update_buffer()
+    describe('set_block_in_buffer()', function()
+      it('replaces lines in the current buffer with the given block', function()
         local buf = vim.api.nvim_create_buf(false, true)
         vim.api.nvim_set_current_buf(buf)
 
-        local original_lines = {
-          'start',
-          '````gpg',
-          'original content',
-          '````',
-          'end',
-        }
-        vim.api.nvim_buf_set_lines(buf, 0, -1, false, original_lines)
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, original)
 
-        Block.set_block_content(2, 4, { 'new line 1', 'new line 2' })
-
+        Block.set_block_in_buffer(new_block)
         local result = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-        assert.are.same('````gpg', result[2])
-        assert.are.same('new line 1', result[3])
-        assert.are.same('new line 2', result[4])
-        assert.are.same('````', result[5])
+
+        assert.are.same(destination, result)
       end)
     end)
   end)

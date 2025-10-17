@@ -11,16 +11,19 @@ local M = {}
 --- @param text string[]?
 --- @return string[]?
 function M.encrypt_block(block, recipient, text)
-  if not block or Block.is_encrypted(block) then
+  if not block then
+    log.error('Aucun bloc transmis.')
     return
   end
 
-  local ciphertext = Gpg.encrypt_sync(block.content, recipient)
-  if not ciphertext then
-    log.error('Encryption failed for current block.')
-    return
+  if not Block.is_encrypted(block) then
+    local ciphertext = Gpg.encrypt_sync(block.content, recipient)
+    if not ciphertext then
+      log.error('Encryption failed for current block.')
+      return
+    end
+    block.content = ciphertext
   end
-  block.content = ciphertext
 
   if text then
     return Block.set_block_content(text, block)

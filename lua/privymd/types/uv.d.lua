@@ -1,9 +1,5 @@
 --- @meta
 
---- @class uv.uv_stream_t
---- @field close fun(self: uv.uv_stream_t)
---- @field is_closing fun(self: uv.uv_stream_t): boolean
-
 --- Minimal libuv pipe handle
 --- @class uv_pipe_t : uv.uv_stream_t
 --- @field close fun(self: uv_pipe_t)

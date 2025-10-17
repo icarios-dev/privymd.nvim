@@ -1,11 +1,11 @@
 local log = require('privymd.utils.logger')
-log.set_log_level = 'trace'
+log.set_log_level('trace')
 
+--- @class Frontmatter
 local M = {}
 
----------------------------------------------------------------------
--- 🔍 Retrieve the GPG recipient from YAML front-matter (strict mode)
----------------------------------------------------------------------
+--- Retrieve the GPG recipient from YAML front-matter
+--- @return string? recipient
 function M.get_file_recipient()
   log.trace('Looking for recipient (strict YAML front-matter)…')
 

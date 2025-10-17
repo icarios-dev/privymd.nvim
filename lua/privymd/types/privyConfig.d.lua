@@ -1,0 +1,18 @@
+---@meta
+
+--- Configuration options for the PrivyMD plugin.
+--- These options are passed to `require("privymd").setup()`
+--- and control automatic encryption/decryption behavior.
+---
+--- Example:
+--- ```lua
+--- require("privymd").setup({
+---   ft_pattern = "*.md",
+---   auto_decrypt = true,
+---   auto_encrypt = true,
+--- })
+--- ```
+---@class PrivyConfig
+---@field ft_pattern? string Pattern used to detect target files (default: `"*.md"`)
+---@field auto_decrypt? boolean Automatically decrypt GPG blocks on buffer read (default: `true`)
+---@field auto_encrypt? boolean Automatically encrypt GPG blocks on buffer write (default: `true`)

@@ -1,12 +1,15 @@
 local log = require('privymd.utils.logger')
 -- log.set_log_level("debug")
 
+--- @class Block
 local M = {}
 
 local fence_opening = '````gpg'
 local fence_closing = '````'
 
--- 🔍 Trouve tous les blocs ````gpg```` d'un texte donné
+--- Trouve tous les blocs code gpg d'un texte donné
+--- @param text string[]
+--- @return GpgBlock[]
 function M.find_blocks(text)
   log.trace('Looking for blocks…')
   local blocks = {}
@@ -58,6 +61,9 @@ function M.find_blocks(text)
   return blocks
 end
 
+--- Construit un nouveau bloc code prêt à être inséré
+--- @param content string[]
+--- @return string[] content with added fences
 local function build_gpg_block(content)
   local gpg_block = { fence_opening }
   vim.list_extend(gpg_block, content)
@@ -66,7 +72,10 @@ local function build_gpg_block(content)
   return gpg_block
 end
 
--- Remplace le contenu d’un bloc : plain <=> cipher
+--- Remplace le contenu d’un bloc : plain <=> cipher
+--- @param lines string[]
+--- @param block GpgBlock
+--- @return string[]
 function M.set_block_content(lines, block)
   if type(lines) ~= 'table' then
     return lines
@@ -87,6 +96,7 @@ function M.set_block_content(lines, block)
 end
 
 -- explicit side-effect: modifies the active buffer
+--- @param block GpgBlock
 function M.set_block_in_buffer(block)
   if type(block) ~= 'table' or type(block.content) ~= 'table' then
     log.error("Invalid block format: expected table with field 'content'.")
@@ -98,7 +108,7 @@ function M.set_block_in_buffer(block)
   vim.api.nvim_buf_set_lines(0, block.start - 1, block.end_, false, block_lines)
 end
 
--- 🔍 Débogage
+--- Affiche la liste des blocs détectés dans le buffer (débug)
 function M.debug_list_blocks()
   local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   local blocks = M.find_blocks(text)
@@ -115,7 +125,9 @@ function M.debug_list_blocks()
   end
 end
 
--- 🔑 Vérifie si un bloc est chiffré (PGP)
+--- Vérifie si un bloc est chiffré (PGP)
+--- @param block GpgBlock
+--- @return boolean
 function M.is_encrypted(block)
   if not block or not block.content or #block.content == 0 then
     return false

@@ -1,6 +1,6 @@
 require('plenary')
 
-local Block = require('privymd.block')
+local Block = require('privymd.core.block')
 
 describe('privymd.block', function()
   -- find_blocks()
@@ -156,8 +156,8 @@ describe('privymd.block', function()
     end)
 
     it('returns false when block content is empty or invalid', function()
-      assert.is_false(Block.is_encrypted(nil))
-      assert.is_false(Block.is_encrypted({ content = {} }))
+      assert.is_false(Block.is_encrypted(nil)) --- @diagnostic disable-line
+      assert.is_false(Block.is_encrypted({ content = {} })) --- @diagnostic disable-line
     end)
   end)
 end)

@@ -1,5 +1,5 @@
-local Block = require('privymd.block')
-local Gpg = require('privymd.gpg')
+local Block = require('privymd.core.block')
+local Gpg = require('privymd.core.gpg')
 local Hooks = require('privymd.hooks')
 
 local M = {}
@@ -10,6 +10,7 @@ M.config = {
   auto_encrypt = true,
 }
 
+--- @param opts PrivyConfig
 function M.setup(opts)
   opts = opts or {}
   M.config = vim.tbl_deep_extend('force', M.config, opts)

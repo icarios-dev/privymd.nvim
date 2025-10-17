@@ -1,0 +1,17 @@
+--- @meta
+
+--- Represents a GPG Markdown block.
+--- A `GpgBlock` defines the location and content of a fenced code block
+--- of type ```gpg``` within the current buffer.
+---
+--- Typical usage:
+--- ```lua
+--- ---@param block GpgBlock
+--- if Block.is_encrypted(block) then
+---   print(("Block from %d to %d contains encrypted data."):format(block.start, block.end_))
+--- end
+--- ```
+--- @class GpgBlock
+--- @field start integer Line index where the block starts (1-based)
+--- @field end_ integer Line index where the block ends (1-based)
+--- @field content string[] Lines contained inside the block (excluding fences)

@@ -4,7 +4,7 @@ describe('privymd.frontmatter', function()
   local Front
 
   before_each(function()
-    Front = require('privymd.frontmatter')
+    Front = require('privymd.core.frontmatter')
   end)
 
   -- No YAML front-matter at all

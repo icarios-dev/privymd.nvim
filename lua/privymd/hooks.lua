@@ -32,7 +32,7 @@ function M.toggle_encryption()
   local text = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   local blocks = Block.find_blocks(text)
   if #blocks == 0 then
-    log.info('No GPG blocks found.')
+    log.trace('No GPG blocks found.')
     return
   end
 
@@ -75,10 +75,10 @@ function M.decrypt_buffer()
   local bufnr = vim.api.nvim_get_current_buf()
   local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   local blocks = Block.find_blocks(text)
-  local blocks_crypted = List.filter(blocks, Block.is_encrypted)
+  local cipher_blocks = List.filter(blocks, Block.is_encrypted)
 
-  if #blocks_crypted == 0 then
-    log.trace('No GPG blocks found.')
+  if #cipher_blocks == 0 then
+    log.trace('No encrypted GPG blocks found.')
     return
   end
 
@@ -89,7 +89,7 @@ function M.decrypt_buffer()
   local i = 1
 
   local function decrypt_next()
-    local block = blocks_crypted[i]
+    local block = cipher_blocks[i]
     if not block then
       vim.bo[bufnr].modified = modified_before
       log.info('All blocks decrypted')

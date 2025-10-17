@@ -62,11 +62,11 @@ function M.setup(opts)
   end, {})
 
   -- Debugging tools
-  vim.api.nvim_create_user_command('PrivyMDShowBlocks', function()
+  vim.api.nvim_create_user_command('PrivyShowBlocks', function()
     Block.debug_list_blocks()
   end, {})
 
-  vim.api.nvim_create_user_command('PrivyMDClearPass', function()
+  vim.api.nvim_create_user_command('PrivyClearPass', function()
     Hooks.clear_passphrase()
   end, {})
 end

@@ -17,7 +17,6 @@ function M.save_buffer(buf_lines)
     return
   end
 
-  log.info('Fichier chiffré écrit, buffer conservé en clair.')
   -- Marque le buffer comme sauvegardé
   vim.bo.modified = false
 end

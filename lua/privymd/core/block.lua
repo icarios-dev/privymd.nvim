@@ -1,5 +1,4 @@
 local log = require('privymd.utils.logger')
--- log.set_log_level("debug")
 
 --- @class Block
 local M = {}

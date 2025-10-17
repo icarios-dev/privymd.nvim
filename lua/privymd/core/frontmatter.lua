@@ -1,5 +1,4 @@
 local log = require('privymd.utils.logger')
-log.set_log_level('trace')
 
 --- @class Frontmatter
 local M = {}
@@ -41,7 +40,7 @@ function M.get_file_recipient()
   end
 
   if not recipient then
-    log.warn('⚠️ No GPG recipient found in front-matter.')
+    log.trace('⚠️ No GPG recipient found in front-matter.')
     return nil
   end
 

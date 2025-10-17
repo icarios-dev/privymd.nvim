@@ -142,6 +142,7 @@ function M.encrypt_and_save_buffer()
     return
   end
   Buffer.save_buffer(ciphertext)
+  log.info('Fichier chiffré écrit, buffer conservé en clair.')
 end
 
 --- Retire la passphrase de la mémoire

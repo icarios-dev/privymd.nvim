@@ -78,35 +78,13 @@ function M.spawn_gpg(args, pipes, on_exit)
   return handle
 end
 
---- Run gpg synchronously and return a structured result.
---- Blocks the event loop until the process completes.
---- @param args string[]
---- @param pipes uv_pipes
---- @return { code: integer, stdout: string, stderr: string }|nil, string?
-function M.spawn_gpg_sync(args, pipes)
-  local result = { code = 0, stdout = '', stderr = '' }
-  local done = false
-
-  local handle, spawn_err = M.spawn_gpg(args, pipes, function(code, out, errstr)
-    result.code, result.stdout, result.stderr = code, out, errstr
-    done = true
-  end)
-
-  if not handle then
-    return nil, tostring(spawn_err)
-  end
-
-  while not done do
-    vim.uv.run('once')
-  end
-
-  return result
-end
-
 --- Écrit du texte dans un pipe et le ferme proprement.
 --- @param pipe uv_pipe_t
 --- @param data string
 function M.write_and_close(pipe, data)
+  if not pipe or pipe:is_closing() then
+    return
+  end
   pipe:write(data)
   pipe:shutdown(function()
     if not pipe:is_closing() then

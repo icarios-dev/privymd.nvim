@@ -76,14 +76,26 @@ function M.encrypt_sync(plaintext, recipient)
     recipient,
   }
 
-  local result, err = H.spawn_gpg_sync(gpg_args, pipes)
-  if not result then
-    log.error('Erreur lancement GPG (encrypt): ' .. tostring(err))
+  -- 1) spawn non-bloquant (auto_close = false)
+  local result = { code = 0, stdout = '', stderr = '' }
+  local done = false
+  local handle, spawn_err = H.spawn_gpg(gpg_args, pipes, function(code, stdout_str, stderr_str)
+    result.code, result.stdout, result.stderr = code, stdout_str, stderr_str
+    done = true
+  end)
+
+  if not handle then
+    log.error('Erreur lancement GPG (encrypt): ' .. tostring(spawn_err))
     return nil
   end
 
   -- Envoie du texte en clair sur l'entrée standard de gpg
   H.write_and_close(pipes.stdin, table.concat(plaintext, '\n'))
+
+  -- 3) attendre la fin du process
+  while not done do
+    vim.uv.run('once')
+  end
 
   if result.code ~= 0 or result.stdout == '' then
     log.error('Échec chiffrement : ' .. result.stderr)

@@ -24,27 +24,63 @@ local has_eight = list.includes(result, 8)  -- true
 local combined = list.concat(result, {100, 200})  -- {6,7,8,9,10,11,100,200}
 ]]
 
+--- @class List
 local list = {}
 
--- Fonctions de base
+--- Map a list to a new list using a transformation function.
+--- The result preserves order.
+---
+--- Example:
+--- ```lua
+--- local doubled = list.map({1, 2, 3}, function(v) return v * 2 end)
+--- -- doubled => { 2, 4, 6 }
+--- ```
+--- @generic T, R
+--- @param table_ T[] Array-like table to map.
+--- @param lambda fun(value: T): R Transformation applied to each element.
+--- @return R[] result New table with transformed elements.
 function list.map(table_, lambda)
   local result = {}
-  for index, value in ipairs(table_) do
-    result[index] = lambda(value, index)
+  for _, value in ipairs(table_) do
+    table.insert(result, lambda(value))
   end
   return result
 end
 
+--- Filter a list using a predicate function.
+--- Returns a new array containing all values for which `lambda` returns true.
+---
+--- Example:
+--- ```lua
+--- local evens = list.filter({1, 2, 3, 4}, function(v) return v % 2 == 0 end)
+--- -- evens => { 2, 4 }
+--- ```
+--- @generic T
+--- @param table_ T[] Array-like table to filter.
+--- @param lambda fun(value: T): boolean Predicate returning true to keep the element.
+--- @return T[] result New filtered table.
 function list.filter(table_, lambda)
   local result = {}
-  for index, value in ipairs(table_) do
-    if lambda(value, index) then
+  for _, value in ipairs(table_) do
+    if lambda(value) then
       table.insert(result, value)
     end
   end
   return result
 end
 
+--- Reduce a list to a single accumulated value.
+---
+--- Example:
+--- ```lua
+--- local sum = list.reduce({1, 2, 3, 4}, function(acc, v) return acc + v end, 0)
+--- -- sum => 10
+--- ```
+--- @generic T, R
+--- @param table_ T[] Array-like table to reduce.
+--- @param lambda fun(accumulator: R, value: T, index: integer): R Function applied on each element.
+--- @param acc R Initial accumulator value.
+--- @return R result Final accumulated value.
 function list.reduce(table_, lambda, acc)
   for index, value in ipairs(table_) do
     acc = lambda(acc, value, index)
@@ -52,6 +88,18 @@ function list.reduce(table_, lambda, acc)
   return acc
 end
 
+--- Find the first element matching a predicate.
+--- Returns the value and its index, or nil if not found.
+---
+--- Example:
+--- ```lua
+--- local val, i = list.find({10, 20, 30}, function(v) return v == 20 end)
+--- -- val => 20, i => 2
+--- ```
+---@generic T
+---@param table_ T[] Array-like table to search.
+---@param lambda fun(value: T, index: integer): boolean Predicate returning true to stop the search.
+---@return T? value, integer? index The found value and its index, or nil.
 function list.find(table_, lambda)
   for index, value in ipairs(table_) do
     if lambda(value, index) then
@@ -60,7 +108,12 @@ function list.find(table_, lambda)
   end
 end
 
-function list.some(table_, lambda)
+--- Test if *any* element matches the predicate.
+---@generic T
+---@param table_ T[] Array-like table to test.
+---@param lambda fun(value: T): boolean
+---@return boolean
+function list.any(table_, lambda)
   for _, value in ipairs(table_) do
     if lambda(value) then
       return true
@@ -69,6 +122,11 @@ function list.some(table_, lambda)
   return false
 end
 
+--- Test if *all* elements match the predicate.
+---@generic T
+---@param table_ T[] Array-like table to test.
+---@param lambda fun(value: T): boolean
+---@return boolean
 function list.every(table_, lambda)
   for _, value in ipairs(table_) do
     if not lambda(value) then

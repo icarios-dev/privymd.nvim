@@ -4,8 +4,8 @@ local Decrypt = require('privymd.features.decrypt')
 local Encrypt = require('privymd.features.encrypt')
 local Front = require('privymd.core.frontmatter')
 local Gpg = require('privymd.core.gpg')
+local List = require('privymd.utils.list')
 local log = require('privymd.utils.logger')
--- log.set_log_level("debug")
 
 -- cache local de la passphrase pour la session
 local _cached_passphrase = nil
@@ -75,8 +75,9 @@ function M.decrypt_buffer()
   local bufnr = vim.api.nvim_get_current_buf()
   local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   local blocks = Block.find_blocks(text)
+  local blocks_crypted = List.filter(blocks, Block.is_encrypted)
 
-  if #blocks == 0 then
+  if #blocks_crypted == 0 then
     log.trace('No GPG blocks found.')
     return
   end
@@ -88,7 +89,7 @@ function M.decrypt_buffer()
   local i = 1
 
   local function decrypt_next()
-    local block = blocks[i]
+    local block = blocks_crypted[i]
     if not block then
       vim.bo[bufnr].modified = modified_before
       log.info('All blocks decrypted')

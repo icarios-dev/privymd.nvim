@@ -30,9 +30,20 @@ function M.decrypt_async(ciphertext, passphrase, callback)
   local handle, err = H.spawn_gpg(gpg_args, pipes, function(code, out, errstr)
     vim.schedule(function()
       if code ~= 0 then
-        local err_msg = ('gpg (exit %d): %s'):format(code, errstr)
-        log.error(err_msg)
-        callback(nil, err_msg)
+        local is_blank_try = (not passphrase or passphrase == '')
+        -- stylua: ignore
+        local is_expected = is_blank_try
+          and errstr:match('No passphrase given')
+
+        if is_expected then
+          -- Silent fail: it's a blank passphrase test, not a real error
+          log.debug('Silent GPG failure (expected: missing passphrase or locked key).')
+        else
+          local err_msg = ('gpg (exit %d): %s'):format(code, errstr)
+          log.error(err_msg)
+        end
+
+        callback(nil, errstr)
       else
         callback(vim.split(out, '\n', { trimempty = true }))
       end

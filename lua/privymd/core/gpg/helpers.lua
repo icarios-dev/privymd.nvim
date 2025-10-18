@@ -48,6 +48,7 @@ function M.spawn_gpg(args, pipes, on_exit)
   handle, spawn_err = uv.spawn('gpg', {
     args = args,
     stdio = { pipes.stdin, pipes.stdout, pipes.stderr, pipes.pass },
+    env = { 'LANG=C', 'LC_ALL=C' }, -- avoid localized GPG messages breaking error matching
   }, function(code)
     -- On termine la lecture et on ferme tout proprement
     M.close_all(pipes, handle)

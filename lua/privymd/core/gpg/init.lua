@@ -7,7 +7,7 @@ local M = {}
 
 --- Déchiffrement asynchrone
 ---@param ciphertext string[]
----@param passphrase string
+---@param passphrase string|nil
 ---@param callback fun(result: string[]|nil, err?: string)
 function M.decrypt_async(ciphertext, passphrase, callback)
   if not ciphertext or #ciphertext == 0 then

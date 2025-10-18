@@ -7,16 +7,6 @@ local Gpg = require('privymd.core.gpg')
 local List = require('privymd.utils.list')
 local log = require('privymd.utils.logger')
 
--- cache local de la passphrase pour la session
-local _cached_passphrase = nil
-
-local function ensure_passphrase(passphrase)
-  if passphrase and passphrase ~= '' then
-    return passphrase
-  end
-  return vim.fn.inputsecret('Passphrase GPG : ')
-end
-
 --@class Hooks
 --@field toggle_encryption fun()
 --@field decrypt_buffer fun()
@@ -53,7 +43,7 @@ function M.toggle_encryption()
   vim.bo[bufnr].modified = false
 
   if Block.is_encrypted(target) then
-    local passphrase = ensure_passphrase(_cached_passphrase)
+    local passphrase = Decrypt.get_passphrase()
     Decrypt.decrypt_block(target, passphrase)
   else
     local recipient = Front.get_file_recipient()
@@ -82,7 +72,7 @@ function M.decrypt_buffer()
     return
   end
 
-  local passphrase = ensure_passphrase(_cached_passphrase)
+  local passphrase = Decrypt.get_passphrase()
   local modified_before = vim.bo.modified
   vim.bo[bufnr].modified = false
 
@@ -92,7 +82,7 @@ function M.decrypt_buffer()
     local block = cipher_blocks[i]
     if not block then
       vim.bo[bufnr].modified = modified_before
-      log.info('All blocks decrypted')
+      log.trace('All blocks parsed')
       return
     end
 
@@ -148,7 +138,7 @@ end
 
 --- Retire la passphrase de la mémoire
 function M.clear_passphrase()
-  _cached_passphrase = nil
+  Decrypt.set_passphrase(nil)
   log.info('Passphrase oubliée de la session.')
 end
 

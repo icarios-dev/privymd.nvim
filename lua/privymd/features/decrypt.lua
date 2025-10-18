@@ -16,7 +16,7 @@ function M.decrypt_block(block, passphrase, on_done)
   Gpg.decrypt_async(block.content, passphrase, function(plaintext)
     vim.schedule(function()
       if not plaintext then
-        log.error('Failed to decrypt block.')
+        log.error(('Decrypt failed for block starting at %d'):format(block.start))
         if on_done then
           on_done()
         end

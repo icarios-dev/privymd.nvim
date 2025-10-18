@@ -28,6 +28,7 @@ end
 ---@return nil
 function M.decrypt_block(block, passphrase, on_done)
   if not block or not Block.is_encrypted(block) then
+    -- Nothing to do
     if on_done then
       on_done()
     end
@@ -35,6 +36,7 @@ function M.decrypt_block(block, passphrase, on_done)
   end
 
   if passphrase and #passphrase > 0 then
+    -- Update cached passphrase
     M.set_passphrase(passphrase)
   end
 
@@ -53,9 +55,10 @@ function M.decrypt_block(block, passphrase, on_done)
           M.decrypt_block(block, ask_passphrase(), on_done)
           return
         end
-        if on_done then
-          on_done()
-        end
+        log.debug('Decryption aborted: incorrect passphrase or unreadable block. Process stopped.')
+        log.info('Decryption aborted. Please try again later with :PrivyDecrypt command')
+        M.set_passphrase(nil)
+        return
       end
     end)
   end)

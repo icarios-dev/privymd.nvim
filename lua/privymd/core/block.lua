@@ -1,14 +1,28 @@
+--- @module 'privymd.core.block'
+--- Utilities for detecting, manipulating, and inspecting GPG Markdown blocks.
+--- These fenced blocks use the syntax:
+--- ````
+--- ````gpg
+--- <content>
+--- ````
+--- ````
 local log = require('privymd.utils.logger')
 
---- @class Block
 local M = {}
 
 local fence_opening = '````gpg'
 local fence_closing = '````'
 
---- Trouve tous les blocs code gpg d'un texte donné
---- @param text string[]
---- @return GpgBlock[]
+--- Find all GPG code blocks within a list of text lines.
+--- A valid block starts with ````gpg and ends with ````.
+---
+--- ⚠️ Returned blocks are listed in **reverse order (bottom-to-top)**.
+--- This ensures correct index preservation when encrypting multiple
+--- blocks in sequence: since ciphertext length may differ from plaintext,
+--- processing from bottom to top prevents shifting subsequent indices.
+---
+--- @param text string[] List of text lines to inspect.
+--- @return GpgBlock[] blocks List of detected GPG blocks.
 function M.find_blocks(text)
   log.trace('Looking for blocks…')
   local blocks = {}
@@ -19,7 +33,7 @@ function M.find_blocks(text)
   for line_number, value in ipairs(text) do
     if value:match('^' .. fence_opening .. '$') then
       if in_block then
-        -- ⚠️ Bloc précédent mal fermé → on le réinitialise
+        -- Previous block not closed → reset detection
         log.warn(
           string.format(
             'Unclosed GPG block detected before line %d — restarting detection.',
@@ -39,16 +53,7 @@ function M.find_blocks(text)
       in_block = false
       local end_line = line_number
 
-      --[[ Reverse block collection to preserve line indices
-      En insérant chaque bloc à la position 1, on garantit que les
-      nouveaux blocs s’ajoutent avant les précédents. La liste finale
-      est donc ordonnée du dernier au premier bloc dans le fichier.
-
-      C’est crucial lors du remplacement : le texte chiffré n’ayant
-      pas la même longueur que le texte en clair, les indices
-      `start_line` et `end_line` deviendraient obsolètes dès le
-      deuxième bloc si on traitait le fichier du haut vers le bas.
-      ]]
+      -- Reverse collection to preserve valid indices
       table.insert(blocks, 1, { start = start_line, end_ = end_line, content = content })
       log.debug(string.format('Block found between : %d and %d', start_line, end_line))
     elseif in_block then
@@ -60,9 +65,9 @@ function M.find_blocks(text)
   return blocks
 end
 
---- Construit un nouveau bloc code prêt à être inséré
---- @param content string[]
---- @return string[] content with added fences
+--- Build a GPG Markdown block including its fences.
+--- @param content string[] Inner lines of the block.
+--- @return string[] gpg_block Full block with opening/closing fences.
 local function build_gpg_block(content)
   local gpg_block = { fence_opening }
   vim.list_extend(gpg_block, content)
@@ -71,10 +76,12 @@ local function build_gpg_block(content)
   return gpg_block
 end
 
---- Remplace le contenu d’un bloc : plain <=> cipher
---- @param lines string[]
---- @param block GpgBlock
---- @return string[]
+--- Replace a GPG block’s content within a text list (out-of-buffer operation).
+--- Returns a **new table** with the specified block replaced by its new content.
+---
+--- @param lines string[] Entire text content of the file.
+--- @param block GpgBlock Block to replace (must include `.content`).
+--- @return string[] new_lines Updated text content.
 function M.set_block_content(lines, block)
   if type(lines) ~= 'table' then
     return lines
@@ -94,8 +101,10 @@ function M.set_block_content(lines, block)
   return new_lines
 end
 
--- explicit side-effect: modifies the active buffer
---- @param block GpgBlock
+--- Replace the content of a GPG block **inside the current Neovim buffer**.
+--- Explicit side effect: modifies the buffer content directly.
+---
+--- @param block GpgBlock The block to update within the current buffer.
 function M.set_block_in_buffer(block)
   if type(block) ~= 'table' or type(block.content) ~= 'table' then
     log.error("Invalid block format: expected table with field 'content'.")
@@ -107,14 +116,15 @@ function M.set_block_in_buffer(block)
   vim.api.nvim_buf_set_lines(0, block.start - 1, block.end_, false, block_lines)
 end
 
---- Affiche la liste des blocs détectés dans le buffer (débug)
+--- Print a summary of all detected GPG blocks in the current buffer.
+--- Used for development and debugging.
 function M.debug_list_blocks()
   local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   local blocks = M.find_blocks(text)
   for index, block in ipairs(blocks) do
     print(
       string.format(
-        'Bloc %d : lignes %d-%d, %d lignes',
+        'Block %d : lines %d-%d, %d lines',
         index,
         block.start,
         block.end_,
@@ -124,9 +134,10 @@ function M.debug_list_blocks()
   end
 end
 
---- Vérifie si un bloc est chiffré (PGP)
+--- Check whether a block’s content begins with an armored PGP header.
+---
 --- @param block GpgBlock
---- @return boolean
+--- @return boolean is_encrypted True if block appears to contain PGP data.
 function M.is_encrypted(block)
   if not block or not block.content or #block.content == 0 then
     return false

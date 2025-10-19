@@ -42,6 +42,7 @@ end
 ---   - If no passphrase was given, prompts the user and retries once.
 ---   - Otherwise logs the failure, clears the cache, and notifies the user.
 ---
+--- @async
 --- @param block GpgBlock block to decrypt
 --- @param passphrase string|nil optional passphrase
 --- @param on_done fun()|nil callback executed after completion

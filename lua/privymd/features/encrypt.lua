@@ -6,6 +6,7 @@ local log = require('privymd.utils.logger')
 local M = {}
 
 --- Chiffre un bloc à l'intérieur d'un texte
+--- @async
 --- @param block GpgBlock
 --- @param recipient string
 --- @param text string[]?

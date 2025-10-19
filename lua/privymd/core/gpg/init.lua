@@ -14,6 +14,7 @@ local M = {}
 ---
 --- Handles "blank passphrase" attempts gracefully by logging a silent debug message.
 ---
+--- @async
 --- @param ciphertext string[] Lines of the encrypted content block.
 --- @param passphrase string|nil Optional passphrase to unlock the private key.
 --- @param callback fun(result: string[]|nil, err?: string) Callback invoked upon decryption completion.
@@ -79,6 +80,7 @@ end
 --- Encrypt plaintext lines for a given recipient.
 --- Runs synchronously until GPG finishes and returns the armored ciphertext.
 ---
+--- @async
 --- @param plaintext string[] Plaintext lines to encrypt.
 --- @param recipient string GPG key identifier of the recipient.
 --- @return string[]|nil ciphertext Encrypted lines, or nil if encryption failed.

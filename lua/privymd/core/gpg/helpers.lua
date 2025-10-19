@@ -38,6 +38,7 @@ end
 --- Spawn a GPG process and collect stdout/stderr asynchronously.
 --- Handles both encryption and decryption operations.
 ---
+--- @async
 --- @param args string[] Command-line arguments passed to GPG.
 --- @param pipes uv_pipes Active pipes created by make_pipes().
 --- @param on_exit fun(code: integer, stdout_str: string, stderr_str: string) Callback called when the process exits.

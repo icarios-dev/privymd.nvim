@@ -1,11 +1,14 @@
+--- @module 'privymd.gpg.helpers'
+--- Low-level GPG utilities for process and pipe handling.
+--- Provides helper functions to create libuv pipes, spawn GPG, and ensure proper cleanup.
+
 local uv = vim.uv
 
---- @class GpgHelpers
 local M = {}
 
---- Create a set of libuv pipes (stdin, stdout, stderr[, pass])
---- @param with_pass? boolean include a 'pass' pipe (fd3)
---- @return uv_pipes
+--- Create a table of libuv pipes for stdin/stdout/stderr (and optionally passphrase input).
+--- @param with_pass boolean? If true, include an extra pipe for passphrase input (fd 3).
+--- @return uv_pipes pipes Table containing the created pipes.
 function M.make_pipes(with_pass)
   local pipes = {
     stdin = assert(uv.new_pipe(false)),
@@ -18,9 +21,9 @@ function M.make_pipes(with_pass)
   return pipes
 end
 
---- Close all pipes and an optional process handle
---- @param pipes uv_pipes
---- @param handle? uv_process_t
+--- Properly close all pipes and the process handle.
+--- @param pipes uv_pipes The table returned by make_pipes().
+--- @param handle? uv_process_t Optional process handle to close.
 function M.close_all(pipes, handle)
   for _, p in pairs(pipes) do
     if p and not p:is_closing() then
@@ -32,20 +35,22 @@ function M.close_all(pipes, handle)
   end
 end
 
---- Launch a GPG process (async or sync) and return the handle.
---- Automatically closes all pipes and the handle at the end.
+--- Spawn a GPG process and collect stdout/stderr asynchronously.
+--- Handles both encryption and decryption operations.
 ---
---- @param args string[] Command-line arguments passed to gpg.
---- @param pipes uv_pipes  Set of libuv pipes.
---- @param on_exit fun(code: integer, stdout: string, stderr: string) Callback triggered when the process exits.
---- @return uv_process_t|nil handle Process handle on success, or nil if spawn failed.
---- @return string? err Error message if spawn failed.
+--- @param args string[] Command-line arguments passed to GPG.
+--- @param pipes uv_pipes Active pipes created by make_pipes().
+--- @param on_exit fun(code: integer, stdout_str: string, stderr_str: string) Callback called when the process exits.
+--- @return uv_process_t|nil handle Process handle if successful, or nil if failed.
+--- @return string|nil err Error message when spawn fails.
 function M.spawn_gpg(args, pipes, on_exit)
   local stdout_chunks, stderr_chunks = {}, {}
 
+  ---@type uv_process_t|nil, integer|nil
   local handle, spawn_err
   ---@diagnostic disable-next-line: missing-fields
   handle, spawn_err = uv.spawn('gpg', {
+    -- NOTE: uid/gid/cwd intentionally omitted (valid on Unix systems)
     args = args,
     stdio = { pipes.stdin, pipes.stdout, pipes.stderr, pipes.pass },
     env = { 'LANG=C', 'LC_ALL=C' }, -- avoid localized GPG messages breaking error matching
@@ -59,7 +64,7 @@ function M.spawn_gpg(args, pipes, on_exit)
     return nil, tostring(spawn_err)
   end
 
-  -- redirections
+  -- Capture stdout
   uv.read_start(pipes.stdout, function(err, data)
     if err then
       table.insert(stderr_chunks, 'stdout err: ' .. err)
@@ -68,6 +73,7 @@ function M.spawn_gpg(args, pipes, on_exit)
     end
   end)
 
+  -- Capture stderr
   uv.read_start(pipes.stderr, function(err, data)
     if err then
       table.insert(stderr_chunks, 'stderr err: ' .. err)
@@ -79,9 +85,11 @@ function M.spawn_gpg(args, pipes, on_exit)
   return handle
 end
 
---- Écrit du texte dans un pipe et le ferme proprement.
---- @param pipe uv_pipe_t
---- @param data string
+--- Write data into a libuv pipe and close it properly once the write completes.
+--- Ensures the pipe is not already closing before writing.
+---
+--- @param pipe uv_pipe_t The libuv pipe handle to write into.
+--- @param data string The data to send through the pipe.
 function M.write_and_close(pipe, data)
   if not pipe or pipe:is_closing() then
     return
@@ -94,9 +102,20 @@ function M.write_and_close(pipe, data)
   end)
 end
 
---- Normalise le format de sortie de GPG (évite les doublons de sauts de ligne)
---- @param out string
---- @return string
+--- Normalize GPG command output by ensuring a consistent double newline
+--- separation between headers and message body. This prevents parsing issues
+--- when GPG omits blank lines or uses inconsistent newline sequences.
+---
+--- Example:
+--- ```text
+--- -----BEGIN PGP MESSAGE-----
+--- Version: GnuPG v2
+---
+--- <ciphertext>
+--- ```
+---
+--- @param out string The raw output text returned by GPG.
+--- @return string normalized The normalized string with enforced blank line separation.
 function M.normalize_output(out)
   if not out:match('\n\n') then
     out = out:gsub('(\r?\n\r?\n)', '\n\n')

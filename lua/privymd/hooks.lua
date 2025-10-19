@@ -44,16 +44,17 @@ function M.toggle_encryption()
 
   if Block.is_encrypted(target) then
     local passphrase = Decrypt.get_passphrase()
-    Decrypt.decrypt_block(target, passphrase)
+    Decrypt.decrypt_block(target, passphrase, function()
+      vim.bo[bufnr].modified = modified_before
+    end)
   else
     local recipient = Front.get_file_recipient()
     if not recipient then
       return
     end
     Encrypt.encrypt_block(target, recipient)
+    vim.bo[bufnr].modified = modified_before
   end
-
-  vim.bo[bufnr].modified = modified_before
 end
 
 function M.decrypt_buffer()

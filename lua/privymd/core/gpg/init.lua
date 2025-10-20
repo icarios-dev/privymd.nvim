@@ -21,7 +21,9 @@ local M = {}
 ---        - `result`: decrypted plaintext lines, or nil on error.
 ---        - `err`: optional error message returned by GPG.
 function M.decrypt_async(ciphertext, passphrase, callback)
+  log.trace(' -> entry in decrypt_async()')
   if not ciphertext or #ciphertext == 0 then
+    log.debug(' - nothing to decrypt')
     callback(nil, 'empty')
     return
   end
@@ -39,6 +41,7 @@ function M.decrypt_async(ciphertext, passphrase, callback)
   }
 
   local handle, err = H.spawn_gpg(gpg_args, pipes, function(code, out, errstr)
+    log.trace(' -> entry in spawn_gpg/callback')
     vim.schedule(function()
       if code ~= 0 then
         local is_blank_try = (not passphrase or passphrase == '')

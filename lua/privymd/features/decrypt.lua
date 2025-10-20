@@ -28,6 +28,7 @@ end
 --- Store a passphrase in cache.
 --- @param passphrase string|nil passphrase to cache, or nil to clear
 function M.set_passphrase(passphrase)
+  log.trace(' -  set new passphrase')
   M._cached_passphrase = passphrase
 end
 
@@ -48,11 +49,13 @@ end
 --- @param on_done fun()|nil callback executed after completion
 --- @return nil
 function M.decrypt_block(block, passphrase, on_done)
+  log.trace(' -> entry into decrypt_block()…')
   if not block or not Block.is_encrypted(block) then
     -- Nothing to decrypt
     if on_done then
       on_done()
     end
+    log.trace('<- exit from decrypt_block()')
     return
   end
 
@@ -62,10 +65,12 @@ function M.decrypt_block(block, passphrase, on_done)
   end
 
   Gpg.decrypt_async(block.content, passphrase, function(plaintext)
+    log.trace(' -> entry into decrypt_async/callback')
     vim.schedule(function()
       if plaintext then
         -- Successful decryption
         block.content = plaintext
+        log.trace(' - send plaintext to set_block_in_buffer()…')
         Block.set_block_in_buffer(block)
         if on_done then
           on_done()

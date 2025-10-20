@@ -106,6 +106,7 @@ end
 ---
 --- @param block GpgBlock The block to update within the current buffer.
 function M.set_block_in_buffer(block)
+  log.trace(' -> entry in set_block_in_buffer()')
   if type(block) ~= 'table' or type(block.content) ~= 'table' then
     log.error("Invalid block format: expected table with field 'content'.")
     return

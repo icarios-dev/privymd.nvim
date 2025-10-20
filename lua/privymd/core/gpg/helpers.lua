@@ -1,6 +1,7 @@
 --- @module 'privymd.gpg.helpers'
 --- Low-level GPG utilities for process and pipe handling.
 --- Provides helper functions to create libuv pipes, spawn GPG, and ensure proper cleanup.
+local log = require('privymd.utils.logger')
 
 local uv = vim.uv
 
@@ -45,6 +46,7 @@ end
 --- @return uv_process_t|nil handle Process handle if successful, or nil if failed.
 --- @return string|nil err Error message when spawn fails.
 function M.spawn_gpg(args, pipes, on_exit)
+  log.trace(' -> entry in spawn_gpg()')
   local stdout_chunks, stderr_chunks = {}, {}
 
   ---@type uv_process_t|nil, integer|nil

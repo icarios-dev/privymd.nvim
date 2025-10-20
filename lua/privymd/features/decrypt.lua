@@ -5,6 +5,7 @@
 
 local Block = require('privymd.core.block')
 local Gpg = require('privymd.core.gpg')
+local Passphrase = require('privymd.core.passphrase')
 local log = require('privymd.utils.logger')
 
 --- Prompt the user for a GPG passphrase.
@@ -14,23 +15,6 @@ local function ask_passphrase()
 end
 
 local M = {}
-
---- Cached passphrase for the current session.
---- @type string|nil
-M._cached_passphrase = nil
-
---- Retrieve the cached passphrase.
---- @return string|nil cached_passphrase or nil if unset
-function M.get_passphrase()
-  return M._cached_passphrase
-end
-
---- Store a passphrase in cache.
---- @param passphrase string|nil passphrase to cache, or nil to clear
-function M.set_passphrase(passphrase)
-  log.trace(' -  set new passphrase')
-  M._cached_passphrase = passphrase
-end
 
 --- Decrypt a GPG block asynchronously.
 --- Invokes Gpg.decrypt_async() and updates the buffer content.
@@ -61,7 +45,7 @@ function M.decrypt_block(block, passphrase, on_done)
 
   if passphrase and #passphrase > 0 then
     -- Update cached passphrase
-    M.set_passphrase(passphrase)
+    Passphrase.set(passphrase)
   end
 
   Gpg.decrypt_async(block.content, passphrase, function(plaintext)
@@ -87,7 +71,7 @@ function M.decrypt_block(block, passphrase, on_done)
 
         log.debug('Decryption aborted: incorrect passphrase or unreadable block. Process stopped.')
         log.info('Decryption aborted. Please try again later with :PrivyDecrypt command')
-        M.set_passphrase(nil)
+        Passphrase.wipeout()
         return
       end
     end)

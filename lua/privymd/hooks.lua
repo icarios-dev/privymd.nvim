@@ -5,6 +5,7 @@ local Encrypt = require('privymd.features.encrypt')
 local Front = require('privymd.core.frontmatter')
 local Gpg = require('privymd.core.gpg')
 local List = require('privymd.utils.list')
+local Passphrase = require('privymd.core.passphrase')
 local log = require('privymd.utils.logger')
 
 --@class Hooks
@@ -43,7 +44,7 @@ function M.toggle_encryption()
   vim.bo[bufnr].modified = false
 
   if Block.is_encrypted(target) then
-    local passphrase = Decrypt.get_passphrase()
+    local passphrase = Passphrase.get()
     Decrypt.decrypt_block(target, passphrase, function()
       vim.bo[bufnr].modified = modified_before
     end)
@@ -73,7 +74,7 @@ function M.decrypt_buffer()
     return
   end
 
-  local passphrase = Decrypt.get_passphrase()
+  local passphrase = Passphrase.get()
   local modified_before = vim.bo.modified
   vim.bo[bufnr].modified = false
 
@@ -139,7 +140,7 @@ end
 
 --- Retire la passphrase de la mémoire
 function M.clear_passphrase()
-  Decrypt.set_passphrase(nil)
+  Passphrase.wipeout()
   log.info('Passphrase oubliée de la session.')
 end
 

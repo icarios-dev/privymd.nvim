@@ -79,12 +79,8 @@ end
 --- @param text string[] Plaintext lines to process
 --- @param recipient string GPG recipient identifier (email, key ID, etc.)
 --- @return string[]? encrypted_text Updated text table if encryption occurred,
---- or `nil` when no block was encrypted or GPG is unavailable.
+--- or `nil` when no block was encrypted
 function M.encrypt_text(text, recipient)
-  if not Gpg.is_gpg_available() then
-    log.warn('gpg comamnd not available — encryption aborted.')
-    return
-  end
   log.trace('Encrypting buffer content…')
   local blocks = Block.find_blocks(text)
 

@@ -7,6 +7,18 @@ local uv = vim.uv
 
 local M = {}
 
+--- Check whether GPG is available in the current PATH.
+--- Shows an error notification if not found.
+---
+--- @return boolean available True if GPG executable is available, false otherwise.
+function M.check_gpg()
+  local availability = vim.fn.executable('gpg') == 1
+  if not availability then
+    vim.notify('gpg not found in PATH.', vim.log.levels.ERROR, { title = 'PrivyMD' })
+  end
+  return availability
+end
+
 --- Create a table of libuv pipes for stdin/stdout/stderr (and optionally passphrase input).
 --- @param with_pass boolean? If true, include an extra pipe for passphrase input (fd 3).
 --- @return uv_pipes pipes Table containing the created pipes.
@@ -47,6 +59,10 @@ end
 --- @return string|nil err Error message when spawn fails.
 function M.spawn_gpg(args, pipes, on_exit)
   log.trace(' -> entry in spawn_gpg()')
+  if not M.check_gpg() then
+    log.warn('gpg comamnd not available — encryption aborted.')
+    return
+  end
   local stdout_chunks, stderr_chunks = {}, {}
 
   ---@type uv_process_t|nil, integer|nil

@@ -136,16 +136,8 @@ function M.encrypt_sync(plaintext, recipient)
   return vim.split(out, '\n', { trimempty = true })
 end
 
---- Check whether GPG is available in the current PATH.
---- Shows an error notification if not found.
----
---- @return boolean available True if GPG executable is available, false otherwise.
-function M.is_gpg_available()
-  local availability = vim.fn.executable('gpg') == 1
-  if not availability then
-    vim.notify('GPG non trouvé dans le PATH.', vim.log.levels.ERROR, { title = 'PrivyMD' })
-  end
-  return availability
-end
+--- Alias of `privymd.gpg.helpers.is_gpg_available()`.
+--- @see privymd.gpg.helpers.check_gpg
+M.is_gpg_available = H.check_gpg
 
 return M

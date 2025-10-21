@@ -15,7 +15,6 @@ local Buffer = require('privymd.core.buffer')
 local Decrypt = require('privymd.features.decrypt')
 local Encrypt = require('privymd.features.encrypt')
 local Front = require('privymd.core.frontmatter')
-local Gpg = require('privymd.core.gpg')
 local List = require('privymd.utils.list')
 local Passphrase = require('privymd.core.passphrase')
 local log = require('privymd.utils.logger')
@@ -78,10 +77,6 @@ end
 --- processed in order to avoid index desynchronization while updating
 --- the buffer.
 function M.decrypt_buffer()
-  if not Gpg.is_gpg_available() then
-    log.warn('GPG unavailable — decryption aborted.')
-    return
-  end
   log.trace('Decrypting buffer…')
   local bufnr = vim.api.nvim_get_current_buf()
   local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)

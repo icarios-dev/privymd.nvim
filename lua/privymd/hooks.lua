@@ -125,12 +125,15 @@ function M.encrypt_and_save_buffer()
   local plaintext = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   local recipient = Front.get_file_recipient()
   local blocks = Block.find_blocks(plaintext)
+  local plain_blocks = List.filter(blocks, function(block)
+    return not Block.is_encrypted(block)
+  end)
   local ciphertext
 
-  if #blocks == 0 then
+  if #plain_blocks == 0 then
     Buffer.save_buffer(plaintext)
     return
-  elseif #blocks > 0 and not recipient then
+  elseif #plain_blocks > 0 and not recipient then
     local choice = vim.fn.confirm(
       '⚠️ No GPG recipient found in the front matter.\n'
         .. 'The file will be saved unencrypted.\n\n'

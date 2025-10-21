@@ -50,6 +50,11 @@ function M.encrypt_block(block, recipient, text)
     return
   end
 
+  if not recipient then
+    log.trace('No GPG recipient defined — encryption aborted for this block.')
+    return
+  end
+
   if not Block.is_encrypted(block) then
     local ciphertext = Gpg.encrypt_sync(block.content, recipient)
     if not ciphertext then
@@ -85,11 +90,6 @@ function M.encrypt_text(text, recipient)
 
   if #blocks == 0 then
     log.trace('No GPG block detected.')
-    return
-  end
-
-  if not recipient then
-    log.trace('No GPG recipient defined.')
     return
   end
 

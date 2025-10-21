@@ -63,6 +63,7 @@ function M.toggle_encryption()
   else
     local recipient = Front.get_file_recipient()
     if not recipient then
+      log.info('No GPG recipient defined — encryption impossible.')
       return
     end
     Encrypt.encrypt_block(target, recipient)

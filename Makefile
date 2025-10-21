@@ -27,8 +27,19 @@ selene:
 
 .PHONY: test
 test:
-	@echo "🧪 Running tests with Plenary..."
+	@echo "🧪 Running tests with Plenary…"
 	@$(NEOVIM) --headless -c "lua require('plenary.test_harness').test_directory('$(TEST_DIR)', { minimal_init = '$(MINIMAL_INIT)' })" +qa
+
+.PHONY: test-unit
+test-unit:
+	@echo "🧪 Running unit tests with Plenary…"
+	@$(NEOVIM) --headless -c "lua require('plenary.test_harness').test_directory('$(TEST_DIR)/unit', { minimal_init = '$(MINIMAL_INIT)' })" +qa
+
+.PHONY: test-integration
+test-integration:
+	@echo "🧪 Running integration tests with Plenary…"
+	@$(NEOVIM) --headless -c "lua require('plenary.test_harness').test_directory('$(TEST_DIR)/integration', { minimal_init = '$(MINIMAL_INIT)', sequential=true })" +qa
+
 
 .PHONY: fmt
 fmt:

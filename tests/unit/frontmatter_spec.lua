@@ -1,12 +1,8 @@
 require('plenary')
 
-describe('privymd.frontmatter', function()
-  local Front
+local Front = require('privymd.core.frontmatter')
 
-  before_each(function()
-    Front = require('privymd.core.frontmatter')
-  end)
-
+describe('Frontmatter module', function()
   -- No YAML front-matter at all
   it('returns nil when file has no YAML front-matter', function()
     local buf = vim.api.nvim_create_buf(false, true)
@@ -108,5 +104,21 @@ describe('privymd.frontmatter', function()
 
     local recipient = Front.get_file_recipient()
     assert.are.equal('INDENTED@example.com', recipient)
+  end)
+
+  -- Multiple YAML blocks — only first should be parsed
+  it('returns the recipient from the first YAML block only', function()
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
+      '---',
+      'gpg-recipient: first@example.com',
+      '---',
+      '---',
+      'gpg-recipient: second@example.com',
+      '---',
+    })
+    local recipient = Front.get_file_recipient()
+    assert.are.equal('first@example.com', recipient)
   end)
 end)

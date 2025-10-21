@@ -2,7 +2,7 @@ require('plenary')
 
 local Block = require('privymd.core.block')
 
-describe('privymd.block', function()
+describe('Block module', function()
   -- find_blocks()
   describe('find_blocks()', function()
     it('returns an empty list when no GPG blocks exist', function()
@@ -43,9 +43,9 @@ describe('privymd.block', function()
       -- find_blocks inserts blocks in reverse order
       assert.are.equal(2, #blocks)
       assert.are.equal(5, blocks[1].start)
-      assert.are.equal(7, blocks[1].end_)
+      assert.are.same({ 'B' }, blocks[1].content)
       assert.are.equal(1, blocks[2].start)
-      assert.are.equal(3, blocks[2].end_)
+      assert.are.same({ 'A' }, blocks[2].content)
     end)
 
     it('returns an empty list when a block is incomplete or malformed', function()
@@ -82,7 +82,7 @@ describe('privymd.block', function()
   end)
 
   -- set_block_content()
-  describe('set block', function()
+  describe('Set block', function()
     local original, new_block, destination
 
     before_each(function()

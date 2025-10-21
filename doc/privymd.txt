@@ -1,154 +1,125 @@
-*privymd.txt*                    Plugin PrivyMD — GPG Encryption for Markdown
-==============================================================================
-Table of Contents                                  *privimd-table-of-contents*
+*privymd.txt*               For Neovim 0.10+           Last change: Oct 2025
 
-1. a Neovim plugin       |privymd|
-  - Requirements         |privymd-requirements|
-  - Installation         |privymd-install|
-  - Configuration        |privymd-config|
-2. Usage                 |privymd-usage|
+*privymd*           PrivyMD — Secure Markdown Editing
 
 ==============================================================================
-PrivyMD                                                           *privymd*
+Table of Contents                                  *privymd-table-of-contents*
 
-PrivyMD is a Neovim plugin that lets you edit Markdown files containing
-encrypted text blocks managed by GPG.
+  Introduction             |privymd-intro|
+    Features                 |privymd-features|
+    Setup                    |privymd-setup|
+  Usage                    |privymd-usage|
+    Commands                 |privymd-commands|
+  License                  |privymd-license|
 
-Encrypted sections are defined using a Markdown code fence with the
-language identifier `gpg`, for example:
-
->markdown
-```gpg
-Secret content here
-```
-<
-
-When opening a file, PrivyMD decrypts these blocks automatically.
-When saving, it re-encrypts them — ensuring that **no plaintext is ever
-written to disk**.
-
-REQUIREMENTS                                                *privymd-requirements*
-
-- Neovim ≥ 0.10  
-- `gpg` (GNU Privacy Guard) available in your `$PATH`
-
-INSTALLATION                                                *privymd-install*
-
-Example using **Lazy.nvim**:
-
->lua
-return {
-  "icarios-dev/privymd.nvim",
-  ft = "markdown",
-  config = function()
-    require("privymd").setup({
-      auto_decrypt = true,
-      auto_encrypt = true,
-      progress = true,
-    })
-  end
-}
-<
-
-CONFIGURATION                                               *privymd-config*
-
-Default configuration:
-
->lua
-require("privymd").setup({
-  ft_pattern   = "*.md",   -- file pattern to match
-  auto_decrypt = true,     -- automatically decrypt on buffer open
-  auto_encrypt = true,     -- automatically encrypt before save
-  progress     = true,     -- show a progress spinner or counter
-})
-<
-
-All options are optional.  
-If omitted, default values are applied.
 
 ==============================================================================
-USAGE                                                          *privymd-usage*
+INTRODUCTION                                              *privymd-intro*
 
-FRONT MATTER YAML                                           *privymd-frontmatter*
+PrivyMD is a Neovim plugin for editing Markdown files that contain
+GPG-encrypted text blocks. It transparently decrypts and re-encrypts
+those regions while keeping the rest of the document readable.
 
-The GPG recipient is defined in the YAML front matter at the top of the
-Markdown file:
-
-```yaml
----
-gpg-recipient: GPG-key-identifier
----
-```
-
-If no recipient is found, PrivyMD will warn you and ask whether to
-proceed with an unencrypted save.
-
-COMMANDS                                                    *privymd-commands*
-
-PrivyMD provides the following user commands:
-
-:PrivyDecrypt         Decrypt the current buffer in memory.  
-:PrivyEncrypt         Encrypt and save the current buffer.  
-:PrivyToggle          Toggle encryption/decryption of the block under cursor.  
-:PrivyMDClearPass     Forget the cached passphrase for the session.  
-:PrivyMDShowBlocks    Print all detected GPG blocks to the message area.
-
-AUTOMATION                                                 *privymd-hooks*
-
-PrivyMD automatically registers the following autocommands:
-
-- **BufReadPost**, **BufWinEnter** → auto-decrypt buffer on open  
-- **BufWriteCmd** → encrypt before saving  
-
-These can be disabled by setting the related configuration options to
-`false`.
 
 ==============================================================================
-FEATURES                                                   *privymd-features*
+FEATURES                                                  *privymd-features*
 
-1. Zero plaintext on disk — all encryption/decryption happens in memory.  
-2. Transparent workflow: edit as usual, PrivyMD handles encryption.  
-3. One-time passphrase prompt per session.  
-4. Fully asynchronous decryption.  
-5. Designed specifically for Markdown + GPG workflow.
+  - Transparent encryption/decryption
+  - Automatic decryption on open
+  - Automatic encryption on save
+  - Passphrase cached per session
 
-==============================================================================
-DEBUGGING AND LOGGING                                      *privymd-debug*
-
-PrivyMD uses an internal logging module to display information and
-warnings through `vim.notify`.
-
-To increase verbosity:
->lua
-require("privymd.utils.logger").set_log_level("debug")
-<
-
-Available log levels:
-`trace`, `debug`, `info`, `warn`, `error`
 
 ==============================================================================
-DEVELOPER NOTES                                            *privymd-dev*
+SETUP                                                     *privymd-setup*
+  Default settings:
 
-Main modules:
-- `privymd.block`         → block detection and manipulation
-- `privymd.frontmatter`   → YAML header parsing
-- `privymd.gpg`           → encryption/decryption interface
-- `privymd.hooks`         → integration with buffer events
-- `privymd.utils.logger`  → internal notification wrapper
+      >lua
+      require('privymd').setup({
+        auto_decrypt = true,
+        auto_encrypt = true,
+      })
+      <
 
-==============================================================================
-SOURCE AND CONTRIBUTIONS                                   *privymd-source*
+See also: |privymd-installation| |privymd-usage|
 
-Source code: https://github.com/icarios-dev/privymd.nvim
-
-Issues and pull requests are welcome!  
-Feedback and feature ideas are encouraged.
 
 ==============================================================================
-LICENSE                                                    *privymd-license*
+USAGE                                                     *privymd-usage*
 
-MIT License
-Copyright (c) 2025 Icarios
+Each Markdown file must define a GPG key identifier (`gpg-recipient`) in its
+*YAML front‑matter*. Text regions that should be encrypted must be wrapped
+inside fenced code blocks using the `gpg` language:
+
+  >markdown
+  ---
+  gpg-recipient: user@fake.io
+  ---
+
+  Visible text
+
+  ````gpg
+  Secret content...
+
+  ````
+
+  Visible text
+
 
 ==============================================================================
-vim:tw=78:ts=8:ft=help:norl:
+COMMANDS                                                  *privymd-commands*
+
+*:PrivyDecrypt*
+
+  Manually decrypt all GPG blocks in the buffer
+
+
+*:PrivyEncrypt*
+
+  Encrypt and save the current buffer
+
+
+*:PrivyToggle*
+
+Toggle encryption/decryption of the block under cursor
+
+
+*:PrivyMDClearPass*
+
+  Clear the cached GPG passphrase for the current session
+
+
+==============================================================================
+CREDITS                                                    *privymd-credits*
+
+Author: Arnaud Pithon <contact@icarios.dev>
+License: MIT License {{{
+
+  Copyright (c) 2025 Arnaud Pithon
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+}}}
+
+PrivyMD is developed by Arnaud Pithon <contact@icarios.dev>, and is
+distributed under the MIT license. The project is available as a Git
+repository: https://github.com/icarios-dev/privymd.nvim
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:fdm=marker:

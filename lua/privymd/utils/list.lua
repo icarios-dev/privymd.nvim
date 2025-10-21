@@ -1,3 +1,23 @@
+--- @module 'privymd.utils.list'
+--- Utility module providing JavaScript-style functions for sequential Lua tables.
+--- Inspired by Lodash / Array.prototype methods.
+---
+--- Features:
+--- - Pure functional helpers (`map`, `filter`, `reduce`, `find`, `any`, `every`)
+--- - JS-style helpers (`concat`, `includes`, `flatMap`)
+--- - Chainable interface via `list.wrap()`
+---
+--- Example:
+--- ```lua
+--- local list = require('privymd.utils.list')
+--- local nums = {1, 2, 3, 4, 5}
+--- local result = list.wrap(nums)
+---   :map(function(v) return v * 2 end)
+---   :filter(function(v) return v > 5 end)
+---   :value()
+--- -- result == {6, 8, 10}
+--- ```
+
 -- Module utilitaire pour tables séquentielles façon JS/Lodash
 
 --[[ Exemple d'utilisation
@@ -24,7 +44,6 @@ local has_eight = list.includes(result, 8)  -- true
 local combined = list.concat(result, {100, 200})  -- {6,7,8,9,10,11,100,200}
 ]]
 
---- @class List
 local list = {}
 
 --- Map a list to a new list using a transformation function.

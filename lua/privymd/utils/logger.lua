@@ -1,7 +1,6 @@
 --- @module 'privymd.utils.logger'
 --- Simple logging utility using `vim.notify` for unified plugin messages.
 --- Provides five log levels (trace → error) and allows dynamic configuration.
---- @async
 
 local M = {}
 

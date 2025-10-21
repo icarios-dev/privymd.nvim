@@ -1,18 +1,57 @@
+--- @module 'privymd.features.encrypt'
+---
+--- Feature-level module handling encryption of GPG code blocks.
+---
+--- This module provides high-level functions for encrypting one or several
+--- fenced GPG code blocks inside a Markdown buffer or any text content.
+--- It relies on lower-level utilities from `privymd.core.block` and
+--- `privymd.core.gpg` for block manipulation and GPG process handling.
+---
+--- The encryption process is transparent for the user: encrypted blocks
+--- replace their plaintext content directly in the buffer or in-memory text.
+---
+--- Example:
+--- ```lua
+--- local Encrypt = require('privymd.features.encrypt')
+--- local text = {
+---   '````gpg',
+---   'my secret note',
+---   '````',
+--- }
+---
+--- local recipient = 'user@example.com'
+--- local result = Encrypt.encrypt_text(text, recipient)
+--- vim.print(result)
+--- ```
+---
+--- Each block detected as a GPG code fence will be encrypted using the
+--- configured recipient. The function automatically updates the buffer or
+--- returns a new text table, depending on the call context.
+
 local Block = require('privymd.core.block')
 local Gpg = require('privymd.core.gpg')
 local log = require('privymd.utils.logger')
 
---- @class Encrypt
 local M = {}
 
---- Chiffre un bloc à l'intérieur d'un texte
---- @param block GpgBlock
---- @param recipient string
---- @param text string[]?
---- @return string[]?
+--- Encrypt a single fenced block within text.
+--- Replaces the plaintext content of the block with its encrypted form.
+---
+--- @async
+--- @param block GpgBlock Block to encrypt
+--- @param recipient string GPG recipient identifier (email, key ID, etc.)
+--- @param text? string[] Optional text table; if provided, a new table with
+--- the encrypted block replaced is returned instead of modifying the buffer.
+--- @return string[]? updated_text Returns the updated text if `text` was given,
+--- or `nil` when operating directly on the active buffer.
 function M.encrypt_block(block, recipient, text)
   if not block then
-    log.error('Aucun bloc transmis.')
+    log.error('No block provided.')
+    return
+  end
+
+  if not recipient then
+    log.trace('No GPG recipient defined — encryption aborted for this block.')
     return
   end
 
@@ -32,25 +71,21 @@ function M.encrypt_block(block, recipient, text)
   end
 end
 
---- Chiffre tous les blocs à l'intérieur d'un texte
---- @param text string[]
---- @param recipient string
---- @return string[]?
+--- Encrypt all GPG code blocks within a text table.
+--- This is the high-level function typically called by user-facing commands
+--- to process a whole Markdown document or any string list.
+---
+--- @async
+--- @param text string[] Plaintext lines to process
+--- @param recipient string GPG recipient identifier (email, key ID, etc.)
+--- @return string[]? encrypted_text Updated text table if encryption occurred,
+--- or `nil` when no block was encrypted
 function M.encrypt_text(text, recipient)
-  if not Gpg.is_gpg_available() then
-    log.warn('GPG non disponible — chiffrement annulé.')
-    return
-  end
-  log.trace('Chiffrement du buffer…')
+  log.trace('Encrypting buffer content…')
   local blocks = Block.find_blocks(text)
 
   if #blocks == 0 then
-    log.trace('Aucun bloc GPG détecté.')
-    return
-  end
-
-  if not recipient then
-    log.trace('Pas de destinataire de chiffrement défini.')
+    log.trace('No GPG block detected.')
     return
   end
 

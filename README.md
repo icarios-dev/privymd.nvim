@@ -90,40 +90,14 @@ require("privymd").setup({
 
 ## Available Commands
 
-| Command              | Description                                                                 |
-| -------------------- | --------------------------------------------------------------------------- |
-| `:PrivyMDShowBlocks` | List all detected GPG code blocks                                            |
+| Command            | Description                                                                 |
+| ------------------ | --------------------------------------------------------------------------- |
+| `:PrivyMDShowBlocks` | List all detected GPG code blocks                                           |
 | `:PrivyMDClearPass`  | Clear the cached GPG passphrase for the current session                     |
-| `:PrivyDecrypt`      | Manually decrypt all GPG blocks in the current buffer                        |
-| `:PrivyEncrypt`      | Manually encrypt all GPG blocks in the current buffer and save the file      |
-| `:PrivyToggle`       | Toggle encryption/decryption of the GPG block under the cursor (in memory)   |
+| `:PrivyDecrypt`      | Manually decrypt all GPG blocks in the current buffer                       |
+| `:PrivyEncrypt`      | Manually encrypt all GPG blocks in the current buffer and save the file     |
+| `:PrivyToggle`       | Toggle encryption/decryption of the GPG block under the cursor (in memory)  |
 
----
-
-
-## Highlights
-
-1. **Everything stays in memory** → no temporary plaintext files
-2. **Transparent workflow** → edit Markdown normally, encryption happens automatically
-3. **Secure save** → all GPG blocks are re-encrypted before writing to disk
-4. **Autonomous plugin** → no setup required beyond installation
-
----
-
-## Why PrivyMD?
-
-PrivyMD was designed for users who want to keep sensitive information —
-passwords, credentials, or private notes — inside their Markdown files
-*without sacrificing readability or convenience*.
-
-Unlike most encryption tools, PrivyMD integrates directly with Neovim:
-- It works *transparently* on fenced `gpg` code blocks.
-- No temporary files or external buffers are used.
-- Your editing flow remains exactly the same — only sensitive parts are
-  protected.
-
-It’s a lightweight, memory-safe way to bring **privacy-aware writing**
-to your Markdown workflow.
 
 ---
 
@@ -156,4 +130,4 @@ Visible text
 
 ## License
 
-MIT — © 2025 [icarios-dev](https://github.com/icarios-dev)
+MIT — © 2025 [Arnaud Pithon](https://github.com/icarios-dev)

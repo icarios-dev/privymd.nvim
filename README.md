@@ -130,4 +130,4 @@ Visible text
 
 ## License
 
-MIT — © 2025 [Arnaud Pithon](https://github.com/icarios-dev)
+MIT — © 2025 [Arnaud "icarios" Pithon](https://github.com/icarios-dev)

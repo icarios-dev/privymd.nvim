@@ -48,7 +48,7 @@ See also: |privymd-installation| |privymd-usage|
 USAGE                                                     *privymd-usage*
 
 Each Markdown file must define a GPG key identifier (`gpg-recipient`) in its
-*YAML front‑matter*. Text regions that should be encrypted must be wrapped
+*YAML front-matter*. Text regions that should be encrypted must be wrapped
 inside fenced code blocks using the `gpg` language:
 
   >markdown
@@ -92,10 +92,10 @@ Toggle encryption/decryption of the block under cursor
 ==============================================================================
 CREDITS                                                    *privymd-credits*
 
-Author: Arnaud Pithon <contact@icarios.dev>
+Author: Arnaud "icarios" Pithon <contact@icarios.dev>
 License: MIT License {{{
 
-  Copyright (c) 2025 Arnaud Pithon
+  Copyright (c) 2025 Arnaud "icarios" Pithon
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -117,7 +117,7 @@ License: MIT License {{{
 
 }}}
 
-PrivyMD is developed by Arnaud Pithon <contact@icarios.dev>, and is
+PrivyMD is developed by Arnaud "icarios" Pithon <contact@icarios.dev>, and is
 distributed under the MIT license. The project is available as a Git
 repository: https://github.com/icarios-dev/privymd.nvim
 

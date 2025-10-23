@@ -1,9 +1,12 @@
+require('plenary')
+
 local H = require('privymd.core.gpg.helpers')
 local gpg = require('privymd.core.gpg.gpg')
 
 describe('GPG core module', function()
   before_each(function()
     -- Mock helpers to avoid real GPG calls
+    --- @diagnostic disable-next-line: duplicate-set-field
     H.make_pipes = function()
       return {
         stdin = {
@@ -33,8 +36,10 @@ describe('GPG core module', function()
       }
     end
 
+    --- @diagnostic disable-next-line: duplicate-set-field
     H.write_and_close = function(_, _) end
 
+    --- @diagnostic disable-next-line: duplicate-set-field
     H.normalize_output = function(out)
       return out:gsub('\r', '')
     end
@@ -56,6 +61,7 @@ describe('GPG core module', function()
   it('decrypt_async should invoke callback with decrypted output', function()
     local called = false
 
+    --- @diagnostic disable-next-line: duplicate-set-field
     H.spawn_gpg = function(_, _, on_exit)
       vim.defer_fn(function()
         on_exit(0, 'line1\nline2', '')
@@ -78,6 +84,7 @@ describe('GPG core module', function()
   it('decrypt_async should handle error code properly', function()
     local called = false
 
+    --- @diagnostic disable-next-line: duplicate-set-field
     H.spawn_gpg = function(_, _, on_exit)
       vim.defer_fn(function()
         on_exit(2, '', 'Decryption failed')
@@ -107,6 +114,7 @@ describe('GPG core module', function()
   it('encrypt_sync should return split output on success', function()
     local expected_out = '-----BEGIN PGP MESSAGE-----\nEncrypted block\n-----END PGP MESSAGE-----'
 
+    --- @diagnostic disable-next-line: duplicate-set-field
     H.spawn_gpg = function(_, _, on_exit)
       on_exit(0, expected_out, '')
       return {}, nil
@@ -117,6 +125,7 @@ describe('GPG core module', function()
   end)
 
   it('encrypt_sync should return nil on failure', function()
+    --- @diagnostic disable-next-line: duplicate-set-field
     H.spawn_gpg = function(_, _, on_exit)
       on_exit(2, '', 'error message')
       return {}, nil

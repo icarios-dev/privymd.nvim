@@ -9,6 +9,7 @@ describe('Decrypt features module', function()
 
   before_each(function()
     -- Mock
+    --- @diagnostic disable-next-line: duplicate-set-field
     H.write_and_close = function(_, _) end
 
     -- create a buffer and set it current
@@ -49,6 +50,7 @@ describe('Decrypt features module', function()
   describe('decrypt_block()', function()
     it('should updates buffer content and set passphrase in cache', function()
       -- minimal process simulation
+      --- @diagnostic disable-next-line: duplicate-set-field
       H.spawn_gpg = function(_, _, on_exit)
         log.trace(' -> entry in spawn_gpg() (mock)')
         vim.defer_fn(function()
@@ -78,6 +80,7 @@ describe('Decrypt features module', function()
 
     it('should not update buffer content and clear passphrase if gpg fail', function()
       -- minimal process simulation
+      --- @diagnostic disable-next-line: duplicate-set-field
       H.spawn_gpg = function(_, _, on_exit)
         log.trace(' -> entry in spawn_gpg() (mock)')
         vim.defer_fn(function()
@@ -113,6 +116,7 @@ describe('Decrypt features module', function()
     end)
 
     it('and decrypt_block is successufl', function()
+      --- @diagnostic disable-next-line: duplicate-set-field
       H.spawn_gpg = function(_, _, on_exit)
         log.trace(' -> entry in spawn_gpg() (mock)')
         vim.defer_fn(function()
@@ -136,6 +140,7 @@ describe('Decrypt features module', function()
     end)
 
     it('and decrypt_block fail', function()
+      --- @diagnostic disable-next-line: duplicate-set-field
       H.spawn_gpg = function(_, _, on_exit)
         log.trace(' -> entry in spawn_gpg() (mock)')
         vim.defer_fn(function()

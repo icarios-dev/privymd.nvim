@@ -4,7 +4,7 @@
 --- with GPG and Block modules
 
 local Block = require('privymd.core.block')
-local Gpg = require('privymd.core.gpg')
+local Gpg = require('privymd.core.gpg.gpg')
 local Passphrase = require('privymd.core.passphrase')
 local log = require('privymd.utils.logger')
 

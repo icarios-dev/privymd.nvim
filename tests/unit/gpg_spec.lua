@@ -1,5 +1,5 @@
 local H = require('privymd.core.gpg.helpers')
-local gpg = require('privymd.core.gpg')
+local gpg = require('privymd.core.gpg.gpg')
 
 describe('GPG core module', function()
   before_each(function()

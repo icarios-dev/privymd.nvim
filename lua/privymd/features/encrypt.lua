@@ -29,7 +29,7 @@
 --- returns a new text table, depending on the call context.
 
 local Block = require('privymd.core.block')
-local Gpg = require('privymd.core.gpg')
+local Gpg = require('privymd.core.gpg.gpg')
 local log = require('privymd.utils.logger')
 
 local M = {}

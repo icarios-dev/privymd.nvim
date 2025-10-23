@@ -23,7 +23,7 @@
 --- The plugin depends on GPG being available in the system PATH.
 
 local Block = require('privymd.core.block')
-local Gpg = require('privymd.core.gpg')
+local Gpg = require('privymd.core.gpg.gpg')
 local Hooks = require('privymd.hooks')
 
 local M = {}

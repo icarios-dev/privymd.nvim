@@ -87,6 +87,7 @@ end
 --- @param plaintext string[] Plaintext lines to encrypt.
 --- @param recipient string GPG key identifier of the recipient.
 --- @return string[]|nil ciphertext Encrypted lines, or nil if encryption failed.
+--- @return error? error message
 function M.encrypt_sync(plaintext, recipient)
   log.trace('Encrypting block…')
 
@@ -113,8 +114,7 @@ function M.encrypt_sync(plaintext, recipient)
   end)
 
   if not handle then
-    log.error('Failed to start GPG (encrypt): ' .. tostring(spawn_err))
-    return nil
+    return nil, 'Failed to start GPG (encrypt): ' .. tostring(spawn_err)
   end
 
   -- Send plaintext to gpg stdin
@@ -126,8 +126,7 @@ function M.encrypt_sync(plaintext, recipient)
   end
 
   if result.code ~= 0 or result.stdout == '' then
-    log.error('Échec chiffrement : ' .. result.stderr)
-    return nil
+    return nil, 'Échec chiffrement : ' .. result.stderr
   end
 
   -- Normalize and return encrypted output

@@ -30,7 +30,7 @@ local M = {}
 --- @async
 --- @param block GpgBlock block to decrypt
 --- @param passphrase string|nil optional passphrase
---- @param on_done fun()|nil callback executed after completion
+--- @param on_done fun(err?: string)|nil callback executed after completion
 --- @return nil
 function M.decrypt_block(block, passphrase, on_done)
   log.trace(' -> entry into decrypt_block()…')
@@ -55,9 +55,12 @@ function M.decrypt_block(block, passphrase, on_done)
         -- Successful decryption
         block.content = plaintext
         log.trace(' - send plaintext to set_block_in_buffer()…')
-        Block.set_block_in_buffer(block)
+        local _, err = Block.set_block_in_buffer(block)
+        if err then
+          log.error(err)
+        end
         if on_done then
-          on_done()
+          on_done(err)
         end
       else
         -- Decryption failed

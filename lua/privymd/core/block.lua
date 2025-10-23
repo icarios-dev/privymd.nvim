@@ -81,14 +81,14 @@ end
 ---
 --- @param lines string[] Entire text content of the file.
 --- @param block GpgBlock Block to replace (must include `.content`).
---- @return string[] new_lines Updated text content.
+--- @return string[]? new_lines Updated text content.
+--- @return error? err error message
 function M.set_block_content(lines, block)
   if type(lines) ~= 'table' then
-    return lines
+    return nil, 'Invalid text format: expected table.'
   end
   if type(block) ~= 'table' or type(block.content) ~= 'table' then
-    log.error("Invalid block format: expected table with field 'content'.")
-    return lines
+    return nil, "Invalid block format: expected table with field 'content'."
   end
 
   local block_lines = build_gpg_block(block.content)
@@ -105,11 +105,11 @@ end
 --- Explicit side effect: modifies the buffer content directly.
 ---
 --- @param block GpgBlock The block to update within the current buffer.
+--- @return nil, error? err messsage on fail, or nil on success
 function M.set_block_in_buffer(block)
   log.trace(' -> entry in set_block_in_buffer()')
   if type(block) ~= 'table' or type(block.content) ~= 'table' then
-    log.error("Invalid block format: expected table with field 'content'.")
-    return
+    return nil, "Invalid block format: expected table with field 'content'."
   end
 
   local block_lines = build_gpg_block(block.content)

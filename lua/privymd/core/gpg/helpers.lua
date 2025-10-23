@@ -60,8 +60,7 @@ end
 function M.spawn_gpg(args, pipes, on_exit)
   log.trace(' -> entry in spawn_gpg()')
   if not M.check_gpg() then
-    log.warn('gpg comamnd not available — encryption aborted.')
-    return
+    return nil, 'gpg command not available in PATH.'
   end
   local stdout_chunks, stderr_chunks = {}, {}
 

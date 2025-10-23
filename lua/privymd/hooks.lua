@@ -81,8 +81,8 @@ function M.decrypt_buffer()
   local bufnr = vim.api.nvim_get_current_buf()
   local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   local blocks = Block.find_blocks(text)
-  local cipher_blocks = List.filter(blocks, Block.is_encrypted)
 
+  local cipher_blocks = List.filter(blocks, Block.is_encrypted)
   if #cipher_blocks == 0 then
     log.trace('No encrypted GPG blocks found.')
     return
@@ -121,13 +121,16 @@ function M.encrypt_and_save_buffer()
   local plaintext = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   local recipient = Front.get_file_recipient()
   local blocks = Block.find_blocks(plaintext)
+  local ciphertext
+
   local plain_blocks = List.filter(blocks, function(block)
     return not Block.is_encrypted(block)
   end)
-  local ciphertext
-
   if #plain_blocks == 0 then
-    Buffer.save_buffer(plaintext)
+    local _, err = Buffer.save_buffer(plaintext)
+    if err then
+      log.error(err)
+    end
     return
   elseif #plain_blocks > 0 and not recipient then
     local choice = vim.fn.confirm(
@@ -144,7 +147,10 @@ function M.encrypt_and_save_buffer()
     end
 
     -- Continue without encryption
-    Buffer.save_buffer(plaintext)
+    local _, err = Buffer.save_buffer(plaintext)
+    if err then
+      log.error(err)
+    end
     return
   end
 
@@ -155,7 +161,10 @@ function M.encrypt_and_save_buffer()
     return
   end
 
-  Buffer.save_buffer(ciphertext)
+  local _, err = Buffer.save_buffer(ciphertext)
+  if err then
+    log.error(err)
+  end
 end
 
 --- Clear the cached passphrase from memory.

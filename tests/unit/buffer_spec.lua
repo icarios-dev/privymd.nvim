@@ -18,7 +18,8 @@ describe('core.buffer.save_buffer()', function()
       end,
     }
 
-    Buffer.save_buffer({ 'ok' })
+    local _, err = Buffer.save_buffer({ 'ok' })
+    assert.are_nil(err)
 
     assert.is_false(vim.bo.modified)
   end)

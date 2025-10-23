@@ -96,14 +96,14 @@ describe('Encrypt features module', function()
       assert.truthy(result and result[2]:match('BEGIN PGP MESSAGE'))
     end)
 
-    it('returns nil when no block was encrypted', function()
+    it('returns the same table when no block was encrypted', function()
       --- @diagnostic disable-next-line: duplicate-set-field
       H.check_gpg = function()
         return false
       end
 
       local result = Encrypt.encrypt_text({ 'foo' }, 'user@example.com')
-      assert.is_nil(result)
+      assert.are_same(result, { 'foo' })
     end)
   end)
 end)

@@ -44,30 +44,35 @@ local M = {}
 --- the encrypted block replaced is returned instead of modifying the buffer.
 --- @return string[]? updated_text Returns the updated text if `text` was given,
 --- or `nil` when operating directly on the active buffer.
+--- @return error? err error message
 function M.encrypt_block(block, recipient, text)
   if not block then
-    log.error('No block provided.')
-    return
+    return nil, 'No block provided.'
   end
 
   if not recipient then
-    log.trace('No GPG recipient defined — encryption aborted for this block.')
-    return
+    return nil, 'No GPG recipient provided.'
   end
 
   if not Block.is_encrypted(block) then
-    local ciphertext = Gpg.encrypt_sync(block.content, recipient)
+    local ciphertext, err = Gpg.encrypt_sync(block.content, recipient)
     if not ciphertext then
-      log.error('Encryption failed for current block.')
-      return
+      return nil, err
     end
     block.content = ciphertext
   end
 
   if text then
-    return Block.set_block_content(text, block)
+    local new_text, err = Block.set_block_content(text, block)
+    if not new_text then
+      return nil, err
+    end
+    return new_text
   else
-    Block.set_block_in_buffer(block)
+    local _, err = Block.set_block_in_buffer(block)
+    if err then
+      log.error(err)
+    end
   end
 end
 
@@ -84,21 +89,25 @@ function M.encrypt_text(text, recipient)
   log.trace('Encrypting buffer content…')
   local blocks = Block.find_blocks(text)
 
-  if #blocks == 0 then
-    log.trace('No GPG block detected.')
-    return
-  end
-
-  for _, block in ipairs(blocks) do
-    local new_text = M.encrypt_block(block, recipient, text)
-    if not new_text then
-      log.error(('Skipping block %d: encryption failed.'):format(block.start))
-    else
-      text = new_text
+  --- @param text_to_update string[]
+  --- @return string[]
+  local function update(text_to_update)
+    for _, block in ipairs(blocks) do
+      local new_text, err = M.encrypt_block(block, recipient, text_to_update)
+      if not new_text then
+        log.error(('Skipping block %d: encryption failed. '):format(block.start) .. err)
+      end
+      text_to_update = assert(new_text)
     end
+    return text_to_update
   end
 
-  log.info('Encryption complete ✔')
+  if #blocks ~= 0 then
+    text = update(text)
+  else
+    log.trace('No GPG block detected.')
+  end
+
   return text
 end
 

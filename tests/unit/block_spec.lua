@@ -112,12 +112,12 @@ describe('Block module', function()
         assert.are.same(destination, updated)
       end)
 
-      it('returns the same table when new_content is invalid', function()
+      it('returns nil when new_content is invalid', function()
         original = { 'a', '````gpg', 'b', '````', 'c' }
         local invalid_block = { start = 2, end_ = 4, content = 'bad_content' }
         local result = Block.set_block_content(original, invalid_block)
 
-        assert.are.same(original, result)
+        assert.are_nil(result)
       end)
     end)
 

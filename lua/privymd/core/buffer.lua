@@ -16,20 +16,19 @@ local M = {}
 --- - On success, marks the buffer as unmodified (`vim.bo.modified = false`).
 ---
 --- @param buf_lines string[] List of lines to write to disk.
+--- @return nil, string?  err message if save failed, or nil on success
 function M.save_buffer(buf_lines)
   if type(buf_lines) ~= 'table' or #buf_lines == 0 then
-    log.error('No data to write (empty or invalid buffer).')
     log.debug('type: ' .. type(buf_lines))
     log.debug('Number of lines to write: ' .. #buf_lines)
-    return
+    return nil, 'No data to write (empty or invalid buffer).'
   end
 
   local filename = vim.api.nvim_buf_get_name(0)
   local ok, err = pcall(vim.fn.writefile, buf_lines, filename)
 
   if not ok then
-    log.error('Write error: ' .. tostring(err))
-    return
+    return nil, 'Write error: ' .. tostring(err)
   end
 
   log.trace('Saved file.')

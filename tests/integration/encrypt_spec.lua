@@ -4,6 +4,8 @@ local Encrypt = require('privymd.features.encrypt')
 local H = require('privymd.core.gpg.helpers')
 
 describe('Encrypt features module', function()
+  local flag_before
+
   before_each(function()
     -- Mock helpers to avoid real GPG calls
     --- @diagnostic disable-next-line: duplicate-set-field
@@ -45,6 +47,9 @@ describe('Encrypt features module', function()
       on_exit(0, cipher_out, '')
       return {}, nil
     end
+
+    vim.bo.modified = false
+    flag_before = vim.bo.modified
   end)
 
   describe('encrypt_block()', function()
@@ -56,6 +61,7 @@ describe('Encrypt features module', function()
 
       assert.True(Block.is_encrypted(block))
       assert.match('BEGIN PGP MESSAGE', block.content[1])
+      assert.equals(flag_before, vim.bo.modified)
     end)
 
     it('does not re-encrypt an already encrypted block', function()
@@ -68,6 +74,7 @@ describe('Encrypt features module', function()
       local original = vim.deepcopy(block.content)
       Encrypt.encrypt_block(block, 'user@example.com')
       assert.same(original, block.content)
+      assert.equals(flag_before, vim.bo.modified)
     end)
 
     it('returns nil when recipient is missing', function()
@@ -75,6 +82,7 @@ describe('Encrypt features module', function()
       ---@diagnostic disable-next-line: param-type-mismatch
       local result = Encrypt.encrypt_block(block, nil)
       assert.is_nil(result)
+      assert.equals(flag_before, vim.bo.modified)
     end)
   end)
 
@@ -94,6 +102,7 @@ describe('Encrypt features module', function()
       assert.is_table(result)
       assert.True(#result > 0)
       assert.truthy(result and result[2]:match('BEGIN PGP MESSAGE'))
+      assert.equals(flag_before, vim.bo.modified)
     end)
 
     it('returns the same table when no block was encrypted', function()
@@ -104,6 +113,7 @@ describe('Encrypt features module', function()
 
       local result = Encrypt.encrypt_text({ 'foo' }, 'user@example.com')
       assert.are_same(result, { 'foo' })
+      assert.equals(flag_before, vim.bo.modified)
     end)
   end)
 end)

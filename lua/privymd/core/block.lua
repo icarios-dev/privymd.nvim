@@ -114,7 +114,9 @@ function M.set_block_in_buffer(block)
 
   local block_lines = build_gpg_block(block.content)
 
+  local flag_before = vim.bo.modified
   vim.api.nvim_buf_set_lines(0, block.start - 1, block.end_, false, block_lines)
+  vim.bo.modified = flag_before
 end
 
 --- Print a summary of all detected GPG blocks in the current buffer.

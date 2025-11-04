@@ -31,6 +31,10 @@ It’s a lightweight, memory-safe way to bring **privacy-aware writing** to your
 
 ---
 
+![PrivyMD demo](./doc/demo.gif)
+
+---
+
 ## Requirements
 
 - **Neovim ≥ 0.10**

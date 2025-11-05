@@ -96,10 +96,10 @@ describe('Block module', function()
       new_block = { start = 2, end_ = 4, content = { 'new', 'content' } }
       destination = {
         'start',
-        '````gpg',
+        '```gpg',
         'new',
         'content',
-        '````',
+        '```',
         'end',
       }
     end)

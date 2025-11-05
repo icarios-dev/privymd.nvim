@@ -16,11 +16,11 @@ describe('Decrypt features module', function()
     buf = vim.api.nvim_create_buf(false, true)
     vim.api.nvim_set_current_buf(buf)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {
-      '````gpg',
+      '```gpg',
       'BEGIN PGP MESSAGE',
       'Encrypted block',
       'END PGP MESSAGE',
-      '````',
+      '```',
     })
 
     -- define our GpgBlock
@@ -72,7 +72,7 @@ describe('Decrypt features module', function()
       -- Lit le résultat
       local result = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 
-      assert.same({ '````gpg', 'PLAINTEXT LINE', '````' }, result)
+      assert.same({ '```gpg', 'PLAINTEXT LINE', '```' }, result)
       assert.are_equal('secret', Passphrase.get())
       assert.is_true(done)
       assert.equals(flag_before, vim.bo.modified)

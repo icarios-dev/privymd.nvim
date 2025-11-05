@@ -10,8 +10,8 @@ local log = require('privymd.utils.logger')
 
 local M = {}
 
-local FENCE_OPENING = '````gpg'
-local FENCE_CLOSING = '````'
+local FENCE_OPENING = '```gpg'
+local FENCE_CLOSING = '```'
 
 --- Find all GPG code blocks within a list of text lines.
 --- A valid block starts with ````gpg and ends with ````.
@@ -28,10 +28,11 @@ function M.find_blocks(text)
   local blocks = {}
 
   local in_block = false
-  local start_line, content
+  local start_line, content, fence_pattern
 
   for line_number, value in ipairs(text) do
-    if value:match('^' .. FENCE_OPENING .. '$') then
+    local opening = value:match('^(```+)gpg%s*$')
+    if opening then
       if in_block then
         -- Previous block not closed → reset detection
         log.warn(
@@ -47,9 +48,10 @@ function M.find_blocks(text)
         in_block = true
         start_line = line_number
         content = {}
-        log.trace('Fence opening : ' .. start_line)
+        fence_pattern = opening
+        log.trace(('Fence opening (%s) : %d'):format(fence_pattern, start_line))
       end
-    elseif in_block and value:match('^' .. FENCE_CLOSING .. '$') then
+    elseif in_block and value:match('^' .. fence_pattern .. '%s*$') then
       in_block = false
       local end_line = line_number
 

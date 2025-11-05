@@ -76,12 +76,12 @@ COMMANDS                                                  *privymd-commands*
 
 *:PrivyEncrypt*
 
-  Encrypt and save the current buffer
+  Manually encrypt all GPG blocks in the buffer
 
 
 *:PrivyToggle*
 
-Toggle encryption/decryption of the block under cursor
+  Toggle encryption/decryption of the block under cursor
 
 
 *:PrivyMDClearPass*

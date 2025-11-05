@@ -99,7 +99,7 @@ require("privymd").setup({
 | `:PrivyMDShowBlocks` | List all detected GPG code blocks                                           |
 | `:PrivyMDClearPass`  | Clear the cached GPG passphrase for the current session                     |
 | `:PrivyDecrypt`      | Manually decrypt all GPG blocks in the current buffer                       |
-| `:PrivyEncrypt`      | Manually encrypt all GPG blocks in the current buffer and save the file     |
+| `:PrivyEncrypt`      | Manually encrypt all GPG blocks in the current buffer                       |
 | `:PrivyToggle`       | Toggle encryption/decryption of the GPG block under the cursor (in memory)  |
 
 

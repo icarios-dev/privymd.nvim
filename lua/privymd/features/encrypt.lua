@@ -96,8 +96,9 @@ function M.encrypt_text(text, recipient)
       local new_text, err = M.encrypt_block(block, recipient, text_to_update)
       if not new_text then
         log.error(('Skipping block %d: encryption failed. '):format(block.start) .. err)
+      else
+        text_to_update = new_text
       end
-      text_to_update = assert(new_text)
     end
     return text_to_update
   end

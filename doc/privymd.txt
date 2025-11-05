@@ -88,6 +88,10 @@ COMMANDS                                                  *privymd-commands*
 
   Clear the cached GPG passphrase for the current session
 
+*:PrivyShowBlocks*
+
+  List all detected GPG code blocks (debug)
+
 
 ==============================================================================
 CREDITS                                                    *privymd-credits*

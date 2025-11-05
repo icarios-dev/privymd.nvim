@@ -111,6 +111,42 @@ function M.decrypt_buffer()
   decrypt_next()
 end
 
+--- Encrypt the current buffer
+---
+--- @async
+--- Reads the entire buffer, encrypts any GPG blocks if a recipient is
+--- defined, and writes the resulting ciphertext.
+---
+--- @return nil,nil|string message present on informational or error cases.
+function M.encrypt_buffer()
+  log.trace('Encrypting buffer…')
+  local plaintext = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+
+  local recipient = Front.get_file_recipient()
+  if not recipient then
+    local message =
+      "⚠️ No GPG recipient found in the front matter.\nThe buffer can't be processed."
+    log.info(message)
+    return nil, message
+  end
+
+  local blocks = Block.find_blocks(plaintext)
+  local plain_blocks = List.filter(blocks, function(block)
+    return not Block.is_encrypted(block)
+  end)
+  if #plain_blocks == 0 then
+    local message = 'No GPG blocks to encrypt found.'
+    log.info(message)
+    return nil, message
+  end
+
+  for _, block in ipairs(plain_blocks) do
+    Encrypt.encrypt_block(block, recipient)
+  end
+  log.trace(('Encrypted %d GPG block(s) successfully.'):format(#plain_blocks))
+  return nil
+end
+
 --- Encrypts and saves the current buffer to disk.
 ---
 --- @async

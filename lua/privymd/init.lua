@@ -86,7 +86,7 @@ function M.setup(opts)
 
   --- Manually encrypt all GPG blocks in the current buffer and save to disk.
   vim.api.nvim_create_user_command('PrivyEncrypt', function()
-    Hooks.encrypt_and_save_buffer()
+    Hooks.encrypt_buffer()
   end, {})
 
   --- Toggle decryption/encryption of the GPG block under the cursor (in memory).

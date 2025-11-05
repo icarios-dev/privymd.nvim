@@ -219,6 +219,41 @@ describe('Hooks', function()
     end)
   end)
 
+  describe('encrypt_buffer', function()
+    before_each(function()
+      make_test_buffer()
+      H.spawn_gpg = gpg.encrypt
+      local plain_buffer = {
+        '---',
+        'gpg-recipient: user@test',
+        '---',
+        '````gpg',
+        'secret block',
+        '````',
+        '````gpg',
+        'another secret block',
+        '````',
+      }
+      vim.api.nvim_buf_set_lines(0, 0, -1, false, plain_buffer)
+    end)
+
+    it('should encrypt buffer', function()
+      local result, mess = Hooks.encrypt_buffer()
+
+      vim.wait(300, function()
+        local line = vim.api.nvim_buf_get_lines(0, 4, 5, true)
+        return line[1] == '-----BEGIN PGP MESSAGE-----'
+      end, 10)
+
+      local block1 = vim.api.nvim_buf_get_lines(0, 4, 5, true)
+      assert.are_equals('-----BEGIN PGP MESSAGE-----', block1[1])
+      local block2 = vim.api.nvim_buf_get_lines(0, -3, -2, true)
+      assert.are_equals('-----END PGP MESSAGE-----', block2[1])
+      assert.is_nil(result)
+      assert.is_nil(mess)
+    end)
+  end)
+
   describe('encrypt_and_save_buffer', function()
     before_each(function()
       make_test_buffer()

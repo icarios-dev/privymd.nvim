@@ -10,6 +10,8 @@ Table of Contents                                  *privymd-table-of-contents*
     Setup                    |privymd-setup|
   Usage                    |privymd-usage|
     Commands                 |privymd-commands|
+  Technical details          |privymd-technical|
+    GPG decryption logic     |privymd-gpg-decryption|
   License                  |privymd-license|
 
 
@@ -91,6 +93,69 @@ COMMANDS                                                  *privymd-commands*
 *:PrivyShowBlocks*
 
   List all detected GPG code blocks (debug)
+
+
+==============================================================================
+GPG DECRYPTION LOGIC                                    *privymd-gpg-decryption*
+
+PrivyMD relies on your local GnuPG configuration (~/.gnupg) to encrypt and
+decrypt GPG blocks embedded in Markdown files.
+
+KEY STRUCTURE
+
+A standard GPG identity consists of:
+- a *master key*, protected by a single secret passphrase;
+- one or more *subkeys* used for specific operations:
+  - signing (S),
+  - encryption (E),
+  - authentication (A).
+
+The encryption subkey is the one used to decrypt GPG blocks. It can be renewed
+or revoked over time, but it always remains tied to the same master key — and
+thus to the same passphrase.
+
+DECRYPTION PROCESS
+
+1. Detect encrypted block
+   PrivyMD identifies the `-----BEGIN PGP MESSAGE-----` sections and passes
+   their content to GnuPG.
+
+2. Analyze recipients
+   GnuPG inspects the message to determine which public keys it was encrypted
+   for. If one of your private keys matches, it will be used to decrypt the
+   content.
+
+   NOTE:
+     In its current version, PrivyMD always encrypts blocks for a *single*
+     recipient key (the one available in your local keyring).
+     While GnuPG fully supports decrypting messages addressed to multiple
+     recipients, PrivyMD does not yet support encrypting to several keys at
+     once. This is a planned improvement for a future release.
+
+3. Request passphrase
+   If your private key is protected, GnuPG prompts for the passphrase of your
+   *master key*. Once entered, gpg-agent caches the key in memory for the
+   session.
+
+4. Successful decryption
+   The encrypted block is replaced in memory with its decrypted content. If no
+   matching key is found or the passphrase is incorrect, the block remains
+   unchanged.
+
+SPECIAL CASES
+
+- Multiple recipients:
+  A GPG message may be encrypted for several keys. If one of them belongs to
+  you, decryption will work normally.
+
+- Multiple master keys:
+  Rare but possible. In that case, GnuPG may ask for different passphrases
+  depending on which key is used. PrivyMD does not handle this case yet.
+
+- Revoked or expired subkey:
+  If a message was encrypted with an older subkey, GnuPG will warn you. The
+  decryption still succeeds as long as the corresponding private key is
+  available locally.
 
 
 ==============================================================================

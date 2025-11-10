@@ -106,6 +106,7 @@ end
 --- Write data into a libuv pipe and close it properly once the write completes.
 --- Ensures the pipe is not already closing before writing.
 ---
+--- @async
 --- @param pipe uv_pipe_t The libuv pipe handle to write into.
 --- @param data string The data to send through the pipe.
 function M.write_and_close(pipe, data)

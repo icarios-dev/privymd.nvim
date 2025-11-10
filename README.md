@@ -10,8 +10,8 @@ All encryption and decryption happen transparently in memory, ensuring that no p
 ## Features
 
 - Transparently encrypt and decrypt clearly defined text blocks with minimal changes to your editing flow
-- Automatic decryption when opening a file (`decrypt_async`)
-- Automatic encryption when saving a file (`encrypt_sync`)
+- Automatic decryption when opening a file
+- Automatic encryption when saving a file
 - Passphrase requested only once per session
 - Properly respects Neovim’s *modified* buffer flag
 - Never writes plaintext to disk without explicit user confirmation

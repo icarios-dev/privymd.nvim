@@ -2,7 +2,6 @@ require('plenary')
 local Decrypt = require('privymd.features.decrypt')
 local H = require('privymd.core.gpg.helpers')
 local Passphrase = require('privymd.core.passphrase')
-local log = require('privymd.utils.logger')
 
 describe('Decrypt features module', function()
   local buf, block, flag_before
@@ -48,64 +47,51 @@ describe('Decrypt features module', function()
   end)
 
   describe('decrypt_block()', function()
-    it('should updates buffer content and set passphrase in cache', function()
-      -- minimal process simulation
-      --- @diagnostic disable-next-line: duplicate-set-field
-      H.spawn_gpg = function(_, _, on_exit)
-        log.trace(' -> entry in spawn_gpg() (mock)')
-        vim.defer_fn(function()
-          on_exit(0, 'PLAINTEXT LINE\n', '')
-        end, 10)
-        return { pid = 1234, close = function() end }, nil
-      end
+    it('should leave untouched if the block is not encrypted', function()
+      block = {
+        start = 1,
+        end_ = 5,
+        content = { 'clear text' },
+      }
+      local target = { 'should not be modified' }
 
-      local done = false
-      Decrypt.decrypt_block(block, 'secret', function()
-        done = true
-      end)
+      local result, err = Decrypt.decrypt_block(block, nil, target)
 
-      -- Laisse le temps au temps
-      vim.wait(300, function()
-        return done
-      end, 10)
-
-      -- Lit le résultat
-      local result = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-
-      assert.same({ '```gpg', 'PLAINTEXT LINE', '```' }, result)
-      assert.are_equal('secret', Passphrase.get())
-      assert.is_true(done)
-      assert.equals(flag_before, vim.bo.modified)
+      assert.are_equals(target, result)
+      assert.is_nil(err)
+      assert.are_equals(flag_before, vim.bo.modified)
     end)
 
     it('should not update buffer content and clear passphrase if gpg fail', function()
-      -- minimal process simulation
       --- @diagnostic disable-next-line: duplicate-set-field
       H.spawn_gpg = function(_, _, on_exit)
-        log.trace(' -> entry in spawn_gpg() (mock)')
-        vim.defer_fn(function()
-          on_exit(1, '', '')
-        end, 10)
+        on_exit(1, '', '')
         return { pid = 1234, close = function() end }, nil
       end
 
-      local done = false
-      Decrypt.decrypt_block(block, 'secret', function()
-        done = true
-      end)
+      Decrypt.decrypt_block(block, 'secret')
 
-      -- Laisse le temps au temps
-      vim.wait(300, function()
-        return done
-      end, 10)
-
-      -- Lit le résultat
       local result = vim.api.nvim_buf_get_lines(buf, 1, 4, false)
 
-      assert.same(block.content, result)
-      assert.are_nil(Passphrase.get())
-      assert.is_falsy(done)
-      assert.equals(flag_before, vim.bo.modified)
+      assert.are_same(block.content, result)
+      assert.is_nil(Passphrase.get())
+      assert.are_equals(flag_before, vim.bo.modified)
+    end)
+
+    it('should updates buffer content and set passphrase in cache', function()
+      --- @diagnostic disable-next-line: duplicate-set-field
+      H.spawn_gpg = function(_, _, on_exit)
+        on_exit(0, 'PLAINTEXT LINE\n', '')
+        return { pid = 1234, close = function() end }, nil
+      end
+
+      Decrypt.decrypt_block(block, 'secret')
+
+      local result = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+
+      assert.are_same({ '```gpg', 'PLAINTEXT LINE', '```' }, result)
+      assert.are_equals('secret', Passphrase.get())
+      assert.are_equals(flag_before, vim.bo.modified)
     end)
   end)
 
@@ -118,48 +104,63 @@ describe('Decrypt features module', function()
     it('and decrypt_block is successufl', function()
       --- @diagnostic disable-next-line: duplicate-set-field
       H.spawn_gpg = function(_, _, on_exit)
-        log.trace(' -> entry in spawn_gpg() (mock)')
-        vim.defer_fn(function()
-          on_exit(0, 'PLAINTEXT LINE\n', '')
-        end, 10)
+        on_exit(0, 'PLAINTEXT LINE\n', '')
         return { pid = 1234, close = function() end }, nil
       end
 
-      local done = false
-      Decrypt.decrypt_block(block, 'secret', function()
-        done = true
-      end)
+      Decrypt.decrypt_block(block, 'secret')
 
-      -- Laisse le temps au temps
-      vim.wait(300, function()
-        return done
-      end, 10)
-
-      assert.is_true(done)
       assert.equals(flag_before, vim.bo.modified)
     end)
 
     it('and decrypt_block fail', function()
       --- @diagnostic disable-next-line: duplicate-set-field
       H.spawn_gpg = function(_, _, on_exit)
-        log.trace(' -> entry in spawn_gpg() (mock)')
-        vim.defer_fn(function()
-          on_exit(1, 'PLAINTEXT LINE\n', '')
-        end, 10)
+        on_exit(1, 'PLAINTEXT LINE\n', '')
         return { pid = 1234, close = function() end }, nil
       end
 
-      local done = false
-      Decrypt.decrypt_block(block, 'secret', function()
-        done = true
-      end)
+      Decrypt.decrypt_block(block, 'secret')
 
-      -- Laisse le temps au temps
-      vim.wait(300, function()
-        return done
-      end, 10)
+      assert.equals(flag_before, vim.bo.modified)
+    end)
+  end)
 
-      assert.is_false(done)
+  describe('decrypt_text()', function()
+    local text, passphrase
+
+    before_each(function()
+      -- minimal process simulation
+      --- @diagnostic disable-next-line: duplicate-set-field
+      H.spawn_gpg = function(_, _, on_exit)
+        on_exit(0, 'PLAINTEXT LINE\n', '')
+        return { pid = 1234, close = function() end }, nil
+      end
+
+      text = {
+        '```gpg',
+        'BEGIN PGP MESSAGE',
+        'Encrypted block',
+        'END PGP MESSAGE',
+        '```',
+        '```gpg',
+        'BEGIN PGP MESSAGE',
+        'Second encrypted block',
+        'END PGP MESSAGE',
+        '```',
+      }
+
+      passphrase = 'password'
+    end)
+
+    it('should decrypt all crypted blocks in text', function()
+      local result
+
+      result = Decrypt.decrypt_text(text, passphrase)
+
+      assert.is_table(result)
+      assert.True(#result > 0)
+      assert.is_equal('PLAINTEXT LINE', result[2])
       assert.equals(flag_before, vim.bo.modified)
     end)
   end)

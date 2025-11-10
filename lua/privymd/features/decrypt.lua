@@ -1,5 +1,5 @@
---- @module 'privymd.core.decrypt'
---- Handles decryption of GPG-encrypted blocks within the buffer.
+--- @module 'privymd.features.decrypt'
+--- Handles decryption of GPG-encrypted blocks.
 --- Manages the cached passphrase, user prompting, and interaction
 --- with GPG and Block modules
 
@@ -7,6 +7,7 @@ local Block = require('privymd.core.block')
 local Gpg = require('privymd.core.gpg.gpg')
 local Passphrase = require('privymd.core.passphrase')
 local log = require('privymd.utils.logger')
+-- log.set_log_level('trace')
 
 --- Prompt the user for a GPG passphrase.
 --- @return string passphrase entered by the user
@@ -16,31 +17,31 @@ end
 
 local M = {}
 
---- Decrypt a GPG block asynchronously.
---- Invokes Gpg.decrypt_async() and updates the buffer content.
+--- Decrypt a GPG block.
+--- Invokes Gpg.decrypt() and updates the buffer content.
 ---
 --- Behavior:
---- - If the block is not encrypted, calls `on_done` immediately.
 --- - If a passphrase is provided, updates the cached value.
 --- - On success: replaces the block content with plaintext and updates the buffer.
 --- - On failure:
 ---   - If no passphrase was given, prompts the user and retries once.
 ---   - Otherwise logs the failure, clears the cache, and notifies the user.
 ---
---- @async
 --- @param block GpgBlock block to decrypt
---- @param passphrase string|nil optional passphrase
---- @param on_done fun(err?: string)|nil callback executed after completion
---- @return nil
-function M.decrypt_block(block, passphrase, on_done)
-  log.trace(' -> entry into decrypt_block()…')
-  if not block or not Block.is_encrypted(block) then
-    -- Nothing to decrypt
-    if on_done then
-      on_done()
-    end
-    log.trace('<- exit from decrypt_block()')
-    return
+--- @param passphrase? string optional passphrase
+--- @param target_text? string[] Optional text table; if provided, a new table with
+--- the encrypted block replaced is returned instead of modifying the buffer.
+--- @return string[]|nil updated_text Returns the updated text if `text` was given,
+--- or `nil` when operating directly on the active buffer.
+--- @return error? err error message
+function M.decrypt_block(block, passphrase, target_text)
+  if not block then
+    return nil, 'No block provided.'
+  end
+
+  if not Block.is_encrypted(block) then
+    log.trace('Block is not encrypted - skipping.')
+    return target_text
   end
 
   if passphrase and #passphrase > 0 then
@@ -48,37 +49,69 @@ function M.decrypt_block(block, passphrase, on_done)
     Passphrase.set(passphrase)
   end
 
-  Gpg.decrypt_async(block.content, passphrase, function(plaintext)
-    log.trace(' -> entry into decrypt_async/callback')
-    vim.schedule(function()
-      if plaintext then
-        -- Successful decryption
-        block.content = plaintext
-        log.trace(' - send plaintext to set_block_in_buffer()…')
-        local _, err = Block.set_block_in_buffer(block)
-        if err then
-          log.error(err)
-        end
-        if on_done then
-          on_done(err)
-        end
+  local plaintext, err = Gpg.decrypt(block.content, passphrase)
+
+  if not plaintext and not passphrase then
+    log.debug('Retrying decryption after prompting for passphrase…')
+    return M.decrypt_block(block, ask_passphrase(), target_text)
+  end
+
+  if err then
+    log.info(('Decrypt failed for block starting at %d'):format(block.start))
+    log.debug('Decryption aborted: incorrect passphrase or unreadable block. Process stopped.')
+    Passphrase.wipeout()
+    return nil, err
+  end
+
+  block.content = assert(plaintext)
+
+  if not target_text then
+    local _, set_err = Block.set_block_in_buffer(block)
+    if set_err then
+      return nil, set_err
+    end
+  else
+    local new_text, set_err = Block.set_block_content(target_text, block)
+    if not new_text then
+      return nil, set_err
+    end
+    return new_text
+  end
+end
+
+--- Decrypt all GPG code blocks within a text table.
+--- This is the high-level function typically called by user-facing commands
+--- to process a whole Markdown document or any string list.
+---
+--- @param text string[]
+--- @param passphrase string|nil
+--- @return string[] decrypted_text Updated text table if decryption occurred
+--- @nodiscard
+function M.decrypt_text(text, passphrase)
+  local blocks = Block.find_blocks(text)
+
+  --- @param text_to_update string[]
+  --- @return string[]
+  --- @nodiscard
+  local function update(text_to_update)
+    for _, block in ipairs(blocks) do
+      local new_text, err = M.decrypt_block(block, passphrase, text_to_update)
+      if not new_text then
+        log.error(('Skipping block %d: decryption failed. '):format(block.start) .. err)
       else
-        -- Decryption failed
-        log.debug(('Decrypt failed for block starting at %d'):format(block.start))
-
-        if not passphrase then
-          log.debug('Retrying decryption after prompting for passphrase…')
-          M.decrypt_block(block, ask_passphrase(), on_done)
-          return
-        end
-
-        log.debug('Decryption aborted: incorrect passphrase or unreadable block. Process stopped.')
-        log.info('Decryption aborted. Please try again later with :PrivyDecrypt command')
-        Passphrase.wipeout()
-        return
+        text_to_update = new_text
       end
-    end)
-  end)
+    end
+    return text_to_update
+  end
+
+  if #blocks ~= 0 then
+    text = update(text)
+  else
+    log.trace('No GPG block detected.')
+  end
+
+  return text
 end
 
 return M

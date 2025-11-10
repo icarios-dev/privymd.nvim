@@ -3,7 +3,6 @@ require('plenary')
 local H = require('privymd.core.gpg.helpers')
 local Hooks = require('privymd.hooks')
 local Passphrase = require('privymd.core.passphrase')
-local log = require('privymd.utils.logger')
 
 --- create a buffer and set it current
 ---
@@ -25,11 +24,8 @@ describe('Hooks', function()
 
     gpg = {
       decrypt = function(_, _, on_exit)
-        log.trace(' -> entry in spawn_gpg() (mock)')
-        vim.defer_fn(function()
-          on_exit(0, 'decrypted block\n', '')
-        end, 10)
-        return { pid = 1234, close = function() end }, nil
+        on_exit(0, 'decrypted block\n', '')
+        return {}, nil
       end,
       encrypt = function(_, _, on_exit)
         on_exit(0, '-----BEGIN PGP MESSAGE-----\nEncrypted block\n-----END PGP MESSAGE-----', '')
@@ -207,11 +203,7 @@ describe('Hooks', function()
 
       Hooks.decrypt_buffer()
 
-      local decrypted
-      vim.wait(300, function()
-        decrypted = vim.api.nvim_buf_get_lines(0, 4, 5, false)
-        return decrypted[1] == 'decrypted block'
-      end, 10)
+      local decrypted = vim.api.nvim_buf_get_lines(0, 4, 5, false)
       local untouched = vim.api.nvim_buf_get_lines(0, 8, 9, false)
 
       assert.is_equal('decrypted block', decrypted[1])

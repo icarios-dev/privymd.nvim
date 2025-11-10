@@ -45,115 +45,95 @@ describe('GPG core module', function()
     end
   end)
 
-  ---------------------------------------------------------------------
-  -- decrypt_async
-  ---------------------------------------------------------------------
-  it('decrypt_async should handle empty input gracefully', function()
-    local called = false
-    gpg.decrypt_async({}, 'test', function(result, err)
-      called = true
-      assert.is_nil(result)
-      assert.equals('empty', err)
+  describe('decrypt', function()
+    it('should return nil on empty input', function()
+      assert.is_nil(gpg.decrypt({}, 'test'))
     end)
-    assert(called)
-  end)
 
-  it('decrypt_async should invoke callback with decrypted output', function()
-    local called = false
+    it('should return nil on fail and empty passphrase', function()
+      --- @diagnostic disable-next-line: duplicate-set-field
+      H.spawn_gpg = function(_, _, on_exit)
+        on_exit(1, '', 'error message')
+        return {}, nil
+      end
 
-    --- @diagnostic disable-next-line: duplicate-set-field
-    H.spawn_gpg = function(_, _, on_exit)
-      vim.defer_fn(function()
+      assert.is_nil(gpg.decrypt({ 'test' }, ''))
+    end)
+
+    it('should return nil and error mesasge on failure', function()
+      --- @diagnostic disable-next-line: duplicate-set-field
+      H.spawn_gpg = function(_, _, on_exit)
+        on_exit(1, '', 'error message')
+        return {}, nil
+      end
+
+      local result, err = gpg.decrypt({ 'test' }, '')
+      assert.is_nil(result)
+      assert.is_string(err)
+    end)
+
+    it('should return split output on success', function()
+      --- @diagnostic disable-next-line: duplicate-set-field
+      H.spawn_gpg = function(_, _, on_exit)
         on_exit(0, 'line1\nline2', '')
-      end, 10)
-      return {}, nil
-    end
+        return {}, nil
+      end
 
-    gpg.decrypt_async({ 'ENCRYPTED' }, 'secret', function(result, err)
-      called = true
+      local result, err = gpg.decrypt({ 'ENCRYPTED' }, 'secret')
       assert.is_nil(err)
-      assert.same({ 'line1', 'line2' }, result)
+      assert.is_same({ 'line1', 'line2' }, result)
     end)
-
-    vim.wait(100, function()
-      return called
-    end)
-    assert.is_true(called)
   end)
 
-  it('decrypt_async should handle error code properly', function()
-    local called = false
+  describe('encrypt', function()
+    it('should return nil on empty input', function()
+      assert.is_nil(gpg.encrypt({}, 'recipient'))
+    end)
 
-    --- @diagnostic disable-next-line: duplicate-set-field
-    H.spawn_gpg = function(_, _, on_exit)
-      vim.defer_fn(function()
-        on_exit(2, '', 'Decryption failed')
-      end, 10)
-      return {}, nil
-    end
+    it('should return nil and error mesasge on failure', function()
+      --- @diagnostic disable-next-line: duplicate-set-field
+      H.spawn_gpg = function(_, _, on_exit)
+        on_exit(2, '', 'error message')
+        return {}, nil
+      end
 
-    gpg.decrypt_async({ 'ENCRYPTED' }, 'secret', function(result, err)
-      called = true
+      local result, err = gpg.encrypt({ 'Plaintext' }, 'recipient')
       assert.is_nil(result)
-      assert.matches('Decryption failed', err)
+      assert.is_string(err)
     end)
 
-    vim.wait(100, function()
-      return called
+    it('should return split output on success', function()
+      local expected_out = '-----BEGIN PGP MESSAGE-----\nEncrypted block\n-----END PGP MESSAGE-----'
+
+      --- @diagnostic disable-next-line: duplicate-set-field
+      H.spawn_gpg = function(_, _, on_exit)
+        on_exit(0, expected_out, '')
+        return {}, nil
+      end
+
+      local result = gpg.encrypt({ 'Plaintext' }, 'recipient')
+      assert.same(vim.split(expected_out, '\n', { trimempty = true }), result)
     end)
-    assert.is_true(called)
   end)
 
-  ---------------------------------------------------------------------
-  -- encrypt_sync
-  ---------------------------------------------------------------------
-  it('encrypt_sync should return nil on empty input', function()
-    assert.is_nil(gpg.encrypt_sync({}, 'recipient'))
-  end)
+  describe('is_gpg_available', function()
+    it('should return true if gpg executable found', function()
+      vim.fn = {
+        executable = function()
+          return 1
+        end,
+      }
+      assert.is_true(gpg.is_gpg_available())
+    end)
 
-  it('encrypt_sync should return split output on success', function()
-    local expected_out = '-----BEGIN PGP MESSAGE-----\nEncrypted block\n-----END PGP MESSAGE-----'
-
-    --- @diagnostic disable-next-line: duplicate-set-field
-    H.spawn_gpg = function(_, _, on_exit)
-      on_exit(0, expected_out, '')
-      return {}, nil
-    end
-
-    local result = gpg.encrypt_sync({ 'Plaintext' }, 'recipient')
-    assert.same(vim.split(expected_out, '\n', { trimempty = true }), result)
-  end)
-
-  it('encrypt_sync should return nil on failure', function()
-    --- @diagnostic disable-next-line: duplicate-set-field
-    H.spawn_gpg = function(_, _, on_exit)
-      on_exit(2, '', 'error message')
-      return {}, nil
-    end
-
-    local result = gpg.encrypt_sync({ 'Plaintext' }, 'recipient')
-    assert.is_nil(result)
-  end)
-
-  ---------------------------------------------------------------------
-  -- is_gpg_available
-  ---------------------------------------------------------------------
-  it('is_gpg_available should return true if gpg executable found', function()
-    vim.fn = {
-      executable = function()
-        return 1
-      end,
-    }
-    assert.is_true(gpg.is_gpg_available())
-  end)
-
-  it('is_gpg_available should return false if gpg executable missing', function()
-    vim.fn = {
-      executable = function()
-        return 0
-      end,
-    }
-    local ok = gpg.is_gpg_available()
-    assert.is_false(ok)
+    it('should return false if gpg executable missing', function()
+      vim.fn = {
+        executable = function()
+          return 0
+        end,
+      }
+      local ok = gpg.is_gpg_available()
+      assert.is_false(ok)
+    end)
   end)
 end)

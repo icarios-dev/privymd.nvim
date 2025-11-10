@@ -33,7 +33,6 @@ local M = {}
 --- - `2`: cursor not inside a GPG block
 --- - `3`: missing GPG recipient in front-matter
 ---
---- @async
 --- @return nil|1|2|3
 function M.toggle_encryption()
   local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
@@ -59,7 +58,7 @@ function M.toggle_encryption()
 
   if Block.is_encrypted(target) then
     local passphrase = Passphrase.get()
-    Decrypt.decrypt_block(target, passphrase, function() end)
+    Decrypt.decrypt_block(target, passphrase)
   else
     local recipient = Front.get_file_recipient()
     if not recipient then
@@ -77,8 +76,8 @@ end
 --- the buffer.
 --- Returns an informational message when no encrypted blocks are found.
 ---
---- @async
---- @return nil,nil|string message  present only if nothing was decrypted.
+--- @return nil
+--- @return string? message  present only if nothing was decrypted.
 function M.decrypt_buffer()
   log.trace('Decrypting buffer…')
   local text = vim.api.nvim_buf_get_lines(0, 0, -1, false)
@@ -93,31 +92,20 @@ function M.decrypt_buffer()
 
   local passphrase = Passphrase.get()
 
-  local i = 1
-
-  local function decrypt_next()
-    local block = cipher_blocks[i]
-    if not block then
-      log.trace('All blocks parsed.')
-      return
-    end
-
-    Decrypt.decrypt_block(block, passphrase, function()
-      i = i + 1
-      decrypt_next()
-    end)
+  for _, block in ipairs(cipher_blocks) do
+    Decrypt.decrypt_block(block, passphrase)
   end
-
-  decrypt_next()
+  log.trace(('Decrypted %d GPG block(s) successfully.'):format(#cipher_blocks))
+  return nil
 end
 
 --- Encrypt the current buffer
 ---
---- @async
 --- Reads the entire buffer, encrypts any GPG blocks if a recipient is
 --- defined, and writes the resulting ciphertext.
 ---
---- @return nil,nil|string message present on informational or error cases.
+--- @return nil
+--- @return string? message present on informational or error cases.
 function M.encrypt_buffer()
   log.trace('Encrypting buffer…')
   local plaintext = vim.api.nvim_buf_get_lines(0, 0, -1, false)
@@ -149,12 +137,12 @@ end
 
 --- Encrypts and saves the current buffer to disk.
 ---
---- @async
 --- Reads the entire buffer, encrypts any GPG blocks if a recipient is
 --- defined, and writes the resulting ciphertext. If no recipient is
 --- found, the user is prompted to confirm saving the plaintext file.
 ---
---- @return nil,nil|string message present on informational or error cases.
+--- @return nil
+--- @return string? message present on informational or error cases.
 function M.encrypt_and_save_buffer()
   local plaintext = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   local recipient = Front.get_file_recipient()

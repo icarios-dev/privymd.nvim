@@ -1,32 +1,10 @@
 --- @module 'privymd.features.encrypt'
----
---- Feature-level module handling encryption of GPG code blocks.
+--- Handles encryption of GPG code blocks.
 ---
 --- This module provides high-level functions for encrypting one or several
 --- fenced GPG code blocks inside a Markdown buffer or any text content.
 --- It relies on lower-level utilities from `privymd.core.block` and
 --- `privymd.core.gpg` for block manipulation and GPG process handling.
----
---- The encryption process is transparent for the user: encrypted blocks
---- replace their plaintext content directly in the buffer or in-memory text.
----
---- Example:
---- ```lua
---- local Encrypt = require('privymd.features.encrypt')
---- local text = {
----   '````gpg',
----   'my secret note',
----   '````',
---- }
----
---- local recipient = 'user@example.com'
---- local result = Encrypt.encrypt_text(text, recipient)
---- vim.print(result)
---- ```
----
---- Each block detected as a GPG code fence will be encrypted using the
---- configured recipient. The function automatically updates the buffer or
---- returns a new text table, depending on the call context.
 
 local Block = require('privymd.core.block')
 local Gpg = require('privymd.core.gpg.gpg')
@@ -37,12 +15,11 @@ local M = {}
 --- Encrypt a single fenced block within text.
 --- Replaces the plaintext content of the block with its encrypted form.
 ---
---- @async
 --- @param block GpgBlock Block to encrypt
 --- @param recipient string GPG recipient identifier (email, key ID, etc.)
 --- @param text? string[] Optional text table; if provided, a new table with
 --- the encrypted block replaced is returned instead of modifying the buffer.
---- @return string[]? updated_text Returns the updated text if `text` was given,
+--- @return string[]|nil updated_text Returns the updated text if `text` was given,
 --- or `nil` when operating directly on the active buffer.
 --- @return error? err error message
 function M.encrypt_block(block, recipient, text)
@@ -55,7 +32,7 @@ function M.encrypt_block(block, recipient, text)
   end
 
   if not Block.is_encrypted(block) then
-    local ciphertext, err = Gpg.encrypt_sync(block.content, recipient)
+    local ciphertext, err = Gpg.encrypt(block.content, recipient)
     if not ciphertext then
       return nil, err
     end
@@ -80,13 +57,11 @@ end
 --- This is the high-level function typically called by user-facing commands
 --- to process a whole Markdown document or any string list.
 ---
---- @async
 --- @param text string[] Plaintext lines to process
 --- @param recipient string GPG recipient identifier (email, key ID, etc.)
---- @return string[]? encrypted_text Updated text table if encryption occurred,
---- or `nil` when no block was encrypted
+--- @return string[] encrypted_text Updated text table if encryption occurred
+--- @nodiscard
 function M.encrypt_text(text, recipient)
-  log.trace('Encrypting buffer content…')
   local blocks = Block.find_blocks(text)
 
   --- @param text_to_update string[]

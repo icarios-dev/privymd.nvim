@@ -51,9 +51,8 @@ Follow the [Conventional Commits](https://www.conventionalcommits.org/) format:
 - Tests are organized in:
   - `tests/unit/` → isolated module tests
   - `tests/integration/` → realistic multi-module scenarios
-- All modules are tested except `hooks.lua` and `utils/` (to be covered later).
+- All modules are tested except `utils/` (to be covered later).
 - Use mocks for external dependencies (`vim.fn`, `vim.api`, GPG I/O).
-- Test asynchronous code with `vim.wait()` or deferred callbacks.
 
 **Goal:** maintain **complete coverage** for all core features,
 particularly `gpg`, `block`, and `encrypt` modules.
@@ -71,10 +70,6 @@ particularly `gpg`, `block`, and `encrypt` modules.
 
 ## 6. Future Improvements
 
-- **Reduce callback complexity** by refactoring to more linear async
-  flows
-- **Revise error handling and propagation** across GPG and hooks modules
-- Add **automated linting and testing** via CI
 - Integrate **code coverage reporting** –
   [luacov](https://keplerproject.github.io/luacov)
 - Introduce a **review checklist** to enforce development discipline

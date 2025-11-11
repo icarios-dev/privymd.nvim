@@ -61,7 +61,9 @@ function M.setup(opts)
     vim.api.nvim_create_autocmd({ 'BufReadPost', 'BufWinEnter' }, {
       pattern = pattern,
       callback = function()
-        Hooks.decrypt_buffer()
+        vim.schedule(function()
+          Hooks.decrypt_buffer()
+        end)
       end,
     })
   end

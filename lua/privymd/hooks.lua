@@ -95,7 +95,7 @@ function M.decrypt_buffer()
   for _, block in ipairs(cipher_blocks) do
     Decrypt.decrypt_block(block, passphrase)
   end
-  log.trace(('Decrypted %d GPG block(s) successfully.'):format(#cipher_blocks))
+  log.trace('End of block deciphering.')
   return nil
 end
 

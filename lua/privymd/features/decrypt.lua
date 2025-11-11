@@ -7,12 +7,14 @@ local Block = require('privymd.core.block')
 local Gpg = require('privymd.core.gpg.gpg')
 local Passphrase = require('privymd.core.passphrase')
 local log = require('privymd.utils.logger')
--- log.set_log_level('trace')
 
 --- Prompt the user for a GPG passphrase.
+---
+--- @param block GpgBlock
 --- @return string passphrase entered by the user
-local function ask_passphrase()
-  return vim.fn.inputsecret('Passphrase GPG : ')
+local function ask_passphrase(block)
+  local prompt = ('Passphrase GPG for block starting at %d : '):format(block.start)
+  return vim.fn.inputsecret(prompt)
 end
 
 local M = {}
@@ -51,11 +53,6 @@ function M.decrypt_block(block, passphrase, target_text)
 
   local plaintext, err = Gpg.decrypt(block.content, passphrase)
 
-  if not plaintext and not passphrase then
-    log.debug('Retrying decryption after prompting for passphrase…')
-    return M.decrypt_block(block, ask_passphrase(), target_text)
-  end
-
   if err then
     log.info(('Decrypt failed for block starting at %d'):format(block.start))
     log.debug('Decryption aborted: incorrect passphrase or unreadable block. Process stopped.')
@@ -63,7 +60,15 @@ function M.decrypt_block(block, passphrase, target_text)
     return nil, err
   end
 
-  block.content = assert(plaintext)
+  if not plaintext and not passphrase then
+    log.debug('Retrying decryption after prompting for passphrase…')
+    local pass = ask_passphrase(block)
+    if pass and pass ~= '' then
+      return M.decrypt_block(block, pass, target_text)
+    end
+  end
+
+  block.content = plaintext or block.content
 
   if not target_text then
     local _, set_err = Block.set_block_in_buffer(block)

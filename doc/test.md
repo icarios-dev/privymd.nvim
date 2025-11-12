@@ -5,24 +5,7 @@ gpg-recipient: icarios
 
 ## section
 
-````gpg
------BEGIN PGP MESSAGE-----
-
-hF4D7RjosoItjAUSAQdAxWTGShq3bU2bueZ/uFTHEuqlO6d2Vb4NDFqwXQo5R0Ew
-uXDCJALgSOvC5xDdp7sOVBRfkh/dHlslhK6XB4yVf5/RYZuB26wS5mDeOjfN0YVg
-0kcBEBVgaZxJRgcej58WE5tfHOYLFCmcitsZ1MTMTzU8hNickkrKpAMpDERx5lyG
-ja9cObvmF5x78Sh9nmFaP3hTbmxNb0knIQ==
-=u7r1
------END PGP MESSAGE-----
-````
-
-lorem ipsum
-
-````sh
-ls /dev/mapper/
-````
-
-````gpg
+```gpg
 -----BEGIN PGP MESSAGE-----
 
 hF4D7RjosoItjAUSAQdA27PaaUfMAHMMFL488Szlf+crKz9SYgWfrjClNjS9ix0w
@@ -31,4 +14,21 @@ hF4D7RjosoItjAUSAQdA27PaaUfMAHMMFL488Szlf+crKz9SYgWfrjClNjS9ix0w
 MLeSYkrQQfSt4Mq2Ounloo9D0nhj38KEPFaZ7hY=
 =fBtf
 -----END PGP MESSAGE-----
+```
+
+lorem ipsum, jecta est
+
+````sh
+ls /dev/mapper/
 ````
+
+```gpg
+-----BEGIN PGP MESSAGE-----
+
+hF4DsYwSotJNTmYSAQdACNdnqZPdHJfYHi3r6ITbMs4sNUHFvGRey0ZrN3S8vmEw
+draI5Yr2dsz0TKC0JB3HOqdttTpNtIbgN+LBHNNOssqzuIcxXGCYogAgSWfgy2sY
+0kcBWX+NxoimdCbiqrnpItw6lXFjqiUmoAsdmU0kGgoj3cHIcqoaHVPhHVqao3cg
+PnUfbOlYMLlTcJ3VOSLQqdqlqRDu10C0NA==
+=aSY3
+-----END PGP MESSAGE-----
+```

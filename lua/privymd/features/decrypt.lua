@@ -5,16 +5,45 @@
 
 local Block = require('privymd.core.block')
 local Gpg = require('privymd.core.gpg.gpg')
+local Key = require('privymd.core.gpg.inspect')
 local Passphrase = require('privymd.core.passphrase')
 local log = require('privymd.utils.logger')
 
 --- Prompt the user for a GPG passphrase.
 ---
---- @param block GpgBlock
---- @return string passphrase entered by the user
-local function ask_passphrase(block)
-  local prompt = ('Passphrase GPG for block starting at %d : '):format(block.start)
-  return vim.fn.inputsecret(prompt)
+--- @param ciphertext string[]
+--- @return string? passphrase entered by the user
+--- null if no key is found in the ciphertext or no match with the keys
+--- available in the keyring
+local function ask_passphrase(ciphertext)
+  local recipients, err = Key.inspect(ciphertext)
+  if not recipients then
+    log.debug('Failed to inspect recipients: ' .. tostring(err))
+    return nil
+  end
+  if #recipients == 0 then
+    log.info('No recipient key found in ciphertext')
+    return nil
+  end
+
+  for _, key in ipairs(recipients) do
+    if key.uid then
+      local prompt = ('Passphrase for key\n : %s\n ? '):format(key.uid)
+      local result
+
+      -- Allow a delay for the UI (Noice) to finish initializing before the call
+      vim.defer_fn(function()
+        result = vim.fn.inputsecret(prompt)
+      end, 50)
+      while result == nil do
+        vim.wait(10)
+      end
+
+      return result
+    end
+  end
+
+  return nil
 end
 
 local M = {}
@@ -62,7 +91,7 @@ function M.decrypt_block(block, passphrase, target_text)
 
   if not plaintext and not passphrase then
     log.debug('Retrying decryption after prompting for passphrase…')
-    local pass = ask_passphrase(block)
+    local pass = ask_passphrase(block.content)
     if pass and pass ~= '' then
       return M.decrypt_block(block, pass, target_text)
     end

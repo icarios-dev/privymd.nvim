@@ -142,4 +142,56 @@ function M.normalize_output(out)
   return out
 end
 
+--- Run gpg with args
+--- Send to the stdandard input and return standard output.
+---
+--- @param args string[]
+--- @param input? string
+--- @return string|nil output output of gpg
+--- @return string? err error message
+function M.run_gpg(args, input)
+  local pipes = M.make_pipes(false)
+
+  --- @class Result
+  --- @field code integer
+  --- @field stdout string
+  --- @field stderr string
+  ---@type Result
+  local result = { code = 0, stdout = '', stderr = '' }
+  local done = false
+
+  local handle, spawn_err = M.spawn_gpg(args, pipes, function(code, stdout_str, stderr_str)
+    result.code, result.stdout, result.stderr = code, stdout_str, stderr_str
+    done = true
+  end)
+  if not handle then
+    log.error('GPG spawn failed: ' .. tostring(spawn_err or 'unknown error'))
+    M.close_all(pipes)
+    return nil, spawn_err or 'spawn failed'
+  end
+
+  if input == nil or input == '' then
+    if pipes.stdin and not pipes.stdin:is_closing() then
+      pipes.stdin:close()
+    end
+  else
+    -- Send input to gpg stdin
+    M.write_and_close(pipes.stdin, input)
+  end
+
+  -- Wait for process completion
+  while not done do
+    vim.uv.run('once')
+  end
+
+  if result.stdout and result.stdout ~= '' then
+    return result.stdout
+  end
+
+  if result.code ~= 0 then
+    local err_msg = ('gpg (exit %d): %s'):format(result.code, result.stderr)
+    return nil, err_msg
+  end
+end
+
 return M

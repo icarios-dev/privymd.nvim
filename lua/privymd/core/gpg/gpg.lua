@@ -10,67 +10,53 @@ local log = require('privymd.utils.logger')
 --- @class gpg
 local M = {}
 
---- Decrypt an armored PGP message.
+local ARGS_DECRYPT = {
+  '--batch',
+  '--yes',
+  '--quiet',
+  '--pinentry-mode',
+  'loopback',
+  '--passphrase-fd',
+  '3',
+  '--decrypt',
+}
+local ARGS_ENCRYPT = {
+  '--batch',
+  '--yes',
+  '--armor',
+  '--encrypt',
+  '-r',
+}
+
 --- Spawns a GPG process, writes the ciphertext and passphrase to its
 --- respective pipes
 ---
 --- @param ciphertext string[] Lines of the encrypted content block.
---- @param passphrase string|nil Optional passphrase to unlock the private key.
+--- @param passphrase? string Optional passphrase to unlock the private key.
 --- @return string[]|nil plaintext Plaintext lines, or nil if encryption failed.
 --- @return error? error message
 function M.decrypt(ciphertext, passphrase)
   if not ciphertext or #ciphertext == 0 then
     return nil
   end
+  local input = table.concat(ciphertext, '\n')
+  passphrase = passphrase or ''
 
-  local pipes = H.make_pipes(true)
-  local gpg_args = {
-    '--batch',
-    '--yes',
-    '--quiet',
-    '--pinentry-mode',
-    'loopback',
-    '--passphrase-fd',
-    '3',
-    '--decrypt',
-  }
+  local result, err = H.run_gpg(ARGS_DECRYPT, input, passphrase)
 
-  local result = { code = 0, stdout = '', stderr = '' }
-  local done = false
-
-  local handle, spawn_err = H.spawn_gpg(gpg_args, pipes, function(code, stdout, stderr)
-    result.code, result.stdout, result.stderr = code, stdout, stderr
-    done = true
-  end)
-  if not handle then
-    return nil, 'Failed to start GPG (decrypt): ' .. tostring(spawn_err)
-  end
-
-  -- Send passphrase (fd3)
-  H.write_and_close(pipes.pass, (passphrase or '') .. '\n')
-
-  -- Send ciphertext to gpg stdin
-  H.write_and_close(pipes.stdin, table.concat(ciphertext, '\n'))
-
-  -- Wait for process completion
-  while not done do
-    vim.uv.run('once')
-  end
-
-  if result.code ~= 0 or result.stdout == '' then
+  if err then
     local is_blank_try = (not passphrase or passphrase == '')
-    local is_expected = is_blank_try and result.stderr:match('No passphrase given')
+    local is_expected = is_blank_try and err:match('No passphrase given')
     if is_expected then
       -- Silent fail: it's a blank passphrase test, not a real error
       log.debug('Silent GPG failure (expected: missing passphrase or locked key).')
       return nil
     end
-    local err_msg = ('gpg (exit %d): %s'):format(result.code, result.stderr)
-    return nil, err_msg
+    return nil, err
   end
 
   -- Normalize and return encrypted output
-  local out = H.normalize_output(result.stdout)
+  local out = H.normalize_output(result)
   log.trace('Renvoi du bloc déchiffré.')
   return vim.split(out, '\n', { trimempty = true })
 end
@@ -83,48 +69,22 @@ end
 --- @return string[]|nil ciphertext Encrypted lines, or nil if encryption failed.
 --- @return error? error message
 function M.encrypt(plaintext, recipient)
-  log.trace('Encrypting block…')
-
   if not plaintext or #plaintext == 0 then
     return nil
   end
+  local input = table.concat(plaintext, '\n')
 
-  local pipes = H.make_pipes(false)
-  local gpg_args = {
-    '--batch',
-    '--yes',
-    '--armor',
-    '--encrypt',
-    '-r',
-    recipient,
-  }
+  local gpg_args = ARGS_ENCRYPT
+  table.insert(gpg_args, recipient)
 
-  local result = { code = 0, stdout = '', stderr = '' }
-  local done = false
+  local result, err = H.run_gpg(gpg_args, input)
 
-  local handle, spawn_err = H.spawn_gpg(gpg_args, pipes, function(code, stdout_str, stderr_str)
-    result.code, result.stdout, result.stderr = code, stdout_str, stderr_str
-    done = true
-  end)
-
-  if not handle then
-    return nil, 'Failed to start GPG (encrypt): ' .. tostring(spawn_err)
-  end
-
-  -- Send plaintext to gpg stdin
-  H.write_and_close(pipes.stdin, table.concat(plaintext, '\n'))
-
-  -- Wait for process completion
-  while not done do
-    vim.uv.run('once')
-  end
-
-  if result.code ~= 0 or result.stdout == '' then
-    return nil, 'Échec chiffrement : ' .. result.stderr
+  if err or result == '' then
+    return nil, 'Échec chiffrement : ' .. err
   end
 
   -- Normalize and return encrypted output
-  local out = H.normalize_output(result.stdout)
+  local out = H.normalize_output(result)
   log.trace('Renvoi du bloc chiffré.')
   return vim.split(out, '\n', { trimempty = true })
 end

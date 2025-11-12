@@ -82,9 +82,9 @@ function M.decrypt_block(block, passphrase, target_text)
 
   local plaintext, err = Gpg.decrypt(block.content, passphrase)
 
-  if err then
+  if err and err ~= '' then
     log.info(('Decrypt failed for block starting at %d'):format(block.start))
-    log.debug('Decryption aborted: incorrect passphrase or unreadable block. Process stopped.')
+    log.debug('Decryption aborted: ' .. err)
     Passphrase.wipeout()
     return nil, err
   end

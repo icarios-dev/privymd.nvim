@@ -20,6 +20,7 @@ function M.check_gpg()
 end
 
 --- Create a table of libuv pipes for stdin/stdout/stderr (and optionally passphrase input).
+---
 --- @param with_pass boolean? If true, include an extra pipe for passphrase input (fd 3).
 --- @return uv_pipes pipes Table containing the created pipes.
 function M.make_pipes(with_pass)
@@ -35,6 +36,7 @@ function M.make_pipes(with_pass)
 end
 
 --- Properly close all pipes and the process handle.
+---
 --- @param pipes uv_pipes The table returned by make_pipes().
 --- @param handle? uv_process_t Optional process handle to close.
 function M.close_all(pipes, handle)
@@ -147,10 +149,12 @@ end
 ---
 --- @param args string[]
 --- @param input? string
---- @return string|nil output output of gpg
+--- @param passphrase? string Optional passphrase to unlock the private key.
+--- @return string output output of gpg
 --- @return string? err error message
-function M.run_gpg(args, input)
-  local pipes = M.make_pipes(false)
+function M.run_gpg(args, input, passphrase)
+  local with_pass = passphrase and true or false
+  local pipes = M.make_pipes(with_pass)
 
   --- @class Result
   --- @field code integer
@@ -167,7 +171,12 @@ function M.run_gpg(args, input)
   if not handle then
     log.error('GPG spawn failed: ' .. tostring(spawn_err or 'unknown error'))
     M.close_all(pipes)
-    return nil, spawn_err or 'spawn failed'
+    return '', spawn_err or 'spawn failed'
+  end
+
+  if with_pass then
+    -- Send passphrase (fd3)
+    M.write_and_close(pipes.pass, (passphrase or '') .. '\n')
   end
 
   if input == nil or input == '' then
@@ -184,14 +193,12 @@ function M.run_gpg(args, input)
     vim.uv.run('once')
   end
 
-  if result.stdout and result.stdout ~= '' then
-    return result.stdout
+  local err_msg
+  if result.code ~= 0 then
+    err_msg = ('gpg (exit %d): %s'):format(result.code, result.stderr)
   end
 
-  if result.code ~= 0 then
-    local err_msg = ('gpg (exit %d): %s'):format(result.code, result.stderr)
-    return nil, err_msg
-  end
+  return result.stdout, err_msg
 end
 
 return M

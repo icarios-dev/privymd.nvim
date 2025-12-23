@@ -114,6 +114,31 @@ describe('GPG core module', function()
       local result = gpg.encrypt({ 'Plaintext' }, 'recipient')
       assert.same(vim.split(expected_out, '\n', { trimempty = true }), result)
     end)
+
+    it('should not duplicate recipient in gpg args across calls', function()
+      local expected_out = '-----BEGIN PGP MESSAGE-----\nEncrypted block\n-----END PGP MESSAGE-----'
+      local call_count = 0
+
+      --- @diagnostic disable-next-line: duplicate-set-field
+      H.spawn_gpg = function(args, _, on_exit)
+        call_count = call_count + 1
+        assert.is_equal('recipient', args[#args], 'last argument passed to gpg should be recipient')
+        assert.is_falsy(
+          'recipient' == args[#args - 1],
+          'second-to-last argument passed to gpg should not be recipient'
+        )
+        on_exit(0, expected_out, '')
+        return {}, nil
+      end
+
+      -- 1er appel
+      gpg.encrypt({ 'Plaintext' }, 'recipient')
+
+      -- 2e appel (c'est celui qui cassait avant le fix)
+      gpg.encrypt({ 'Plaintext' }, 'recipient')
+
+      assert.is_equal(2, call_count, 'spawn_gpg should be called twice')
+    end)
   end)
 
   describe('is_gpg_available', function()

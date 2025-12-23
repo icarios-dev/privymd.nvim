@@ -28,6 +28,30 @@ local ARGS_ENCRYPT = {
   '-r',
 }
 
+--- Build a fresh GPG argument list for decryption.
+---
+--- This function returns a new table on each call to avoid
+--- side effects caused by shared mutable tables.
+---
+--- @return string[] args GPG arguments for decryption
+local function decrypt_args()
+  return { unpack(ARGS_DECRYPT) }
+end
+
+--- Build a fresh GPG argument list for encryption.
+---
+--- The recipient is appended as the final argument. A new table
+--- is returned on each call to prevent accidental mutation of
+--- the base argument list.
+---
+--- @param recipient string GPG key identifier of the recipient
+--- @return string[] args GPG arguments for encryption
+--- @error Throws if recipient is missing or empty-
+local function encrypt_args(recipient)
+  assert(type(recipient) == 'string' and recipient ~= '', 'recipient required')
+  return { unpack(ARGS_ENCRYPT), recipient }
+end
+
 --- Spawns a GPG process, writes the ciphertext and passphrase to its
 --- respective pipes
 ---
@@ -42,7 +66,7 @@ function M.decrypt(ciphertext, passphrase)
   local input = table.concat(ciphertext, '\n')
   passphrase = passphrase or ''
 
-  local result, err = H.run_gpg(ARGS_DECRYPT, input, passphrase)
+  local result, err = H.run_gpg(decrypt_args(), input, passphrase)
 
   if err then
     local is_blank_try = (not passphrase or passphrase == '')
@@ -74,10 +98,7 @@ function M.encrypt(plaintext, recipient)
   end
   local input = table.concat(plaintext, '\n')
 
-  local gpg_args = ARGS_ENCRYPT
-  table.insert(gpg_args, recipient)
-
-  local result, err = H.run_gpg(gpg_args, input)
+  local result, err = H.run_gpg(encrypt_args(recipient), input)
 
   if err or result == '' then
     return nil, 'Échec chiffrement : ' .. err

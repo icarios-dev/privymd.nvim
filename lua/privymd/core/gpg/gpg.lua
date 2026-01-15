@@ -10,24 +10,6 @@ local log = require('privymd.utils.logger')
 --- @class gpg
 local M = {}
 
-local ARGS_DECRYPT = {
-  '--batch',
-  '--yes',
-  '--quiet',
-  '--pinentry-mode',
-  'loopback',
-  '--passphrase-fd',
-  '3',
-  '--decrypt',
-}
-local ARGS_ENCRYPT = {
-  '--batch',
-  '--yes',
-  '--armor',
-  '--encrypt',
-  '-r',
-}
-
 --- Build a fresh GPG argument list for decryption.
 ---
 --- This function returns a new table on each call to avoid
@@ -35,7 +17,16 @@ local ARGS_ENCRYPT = {
 ---
 --- @return string[] args GPG arguments for decryption
 local function decrypt_args()
-  return { unpack(ARGS_DECRYPT) }
+  return {
+    '--batch',
+    '--yes',
+    '--quiet',
+    '--pinentry-mode',
+    'loopback',
+    '--passphrase-fd',
+    '3',
+    '--decrypt',
+  }
 end
 
 --- Build a fresh GPG argument list for encryption.
@@ -46,10 +37,20 @@ end
 ---
 --- @param recipient string GPG key identifier of the recipient
 --- @return string[] args GPG arguments for encryption
---- @error Throws if recipient is missing or empty-
+--- @error Throws if recipient is missing or empty
 local function encrypt_args(recipient)
   assert(type(recipient) == 'string' and recipient ~= '', 'recipient required')
-  return { unpack(ARGS_ENCRYPT), recipient }
+
+  local gpg_args = {
+    '--batch',
+    '--yes',
+    '--armor',
+    '--encrypt',
+    '-r',
+    recipient,
+  }
+
+  return gpg_args
 end
 
 --- Spawns a GPG process, writes the ciphertext and passphrase to its
